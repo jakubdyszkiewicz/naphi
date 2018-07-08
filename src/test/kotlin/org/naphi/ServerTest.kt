@@ -5,6 +5,8 @@ import org.junit.Test
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.LongAdder
 
 class ServerTest {
 
@@ -25,6 +27,44 @@ class ServerTest {
         // then
         assertThat(responseCode).isEqualTo(200)
         assertThat(response).isEqualTo("Hello, World!")
+
+        // cleanup
+        server.close()
+    }
+
+    @Test
+    fun `server should refuse to accept more connections that maxIncommingConnections`() {
+        // given
+        val server = Server(maxIncommingConnections = 1)
+        val serverThreadPool = Executors.newSingleThreadExecutor()
+        serverThreadPool.submit { server.start(8090) }
+
+        // when
+        val completedRequest = LongAdder() // we will be adding from multiple threads
+        // we are starting 3 requests simultaneously
+        val clientsThreadPool = Executors.newFixedThreadPool(3)
+        repeat(times = 3) {
+            clientsThreadPool.submit {
+                try {
+                    val connection = URL("http://localhost:8090/").openConnection() as HttpURLConnection
+                    connection.connectTimeout = 1000
+                    connection.connect()
+                    if (connection.responseCode == 200) {
+                        completedRequest.increment()
+                    }
+                    connection.disconnect()
+                } catch (e: Exception) {
+                    println(e)
+                    throw e
+                }
+            }
+            Thread.sleep(500)
+        }
+        // it should be enough for 3 request to complete if limiting was somehow broken
+        clientsThreadPool.awaitTermination(20, TimeUnit.SECONDS)
+
+        // then
+        assertThat(completedRequest.sum()).isEqualTo(2)
 
         // cleanup
         server.close()
