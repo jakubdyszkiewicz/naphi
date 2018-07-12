@@ -10,13 +10,14 @@ class ResponseRawCreateTest {
         // given
         val response = Response(
                 status = Status.OK,
-                headers = HttpHeaders("Content-Length" to "5"),
+                headers = HttpHeaders("Content-Length" to "5", "Content-Type" to "text/plain"),
                 body = "Hello")
 
         // expect
         assertThat(response.toRaw()).isEqualTo("""
             HTTP/1.1 200 OK
             Content-Length: 5
+            Content-Type: text/plain
 
             Hello
         """.trimIndent())

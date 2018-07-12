@@ -2,6 +2,7 @@ package org.naphi
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import org.naphi.RequestMethod.*
 import java.net.HttpURLConnection
 import java.net.Socket
 import java.net.URL
@@ -11,24 +12,24 @@ import java.util.concurrent.atomic.LongAdder
 
 class ServerTest {
 
+    private val client = HttpUrlConnectionClient(connectionTimeout = 50, socketTimeout = 100)
+
     @Test
     fun `server should return OK hello world response`() {
         // given
-        val server = Server(handler = { Response(status = Status.OK, body = "Hello, World!") })
+        val body = "Hello, World!"
+        val server = Server(handler = {
+            Response(status = Status.OK, body = body, headers = HttpHeaders("Content-Length" to body.length.toString()))
+        })
         val threadPool = Executors.newSingleThreadExecutor()
         threadPool.submit { server.start(8090) }
 
         // when
-        val connection = URL("http://localhost:8090/").openConnection() as HttpURLConnection
-        connection.connectTimeout = 50
-        connection.connect()
-        val responseCode = connection.responseCode
-        val response = connection.inputStream.bufferedReader().readText()
-        connection.disconnect()
+        val response = client.exchange(url = "http://localhost:8090", request = Request(path = "/", method = GET))
 
         // then
-        assertThat(responseCode).isEqualTo(200)
-        assertThat(response).isEqualTo("Hello, World!")
+        assertThat(response.status).isEqualTo(Status.OK)
+        assertThat(response.body).isEqualTo("Hello, World!")
 
         // cleanup
         server.close()
@@ -51,13 +52,9 @@ class ServerTest {
         repeat(times = 3) {
             clientsThreadPool.submit {
                 try {
-                    val connection = URL("http://localhost:8090/").openConnection() as HttpURLConnection
-                    connection.connectTimeout = 50
-                    connection.connect()
-                    if (connection.responseCode == 200) {
-                        completedRequest.increment()
-                    }
-                    connection.disconnect()
+                    HttpUrlConnectionClient(connectionTimeout = 50, socketTimeout = 1000)
+                            .exchange(url = "http://localhost:8090", request = Request(path = "/", method = GET))
+                    completedRequest.increment()
                 } catch (e: Exception) {
                     println(e)
                     throw e
@@ -79,32 +76,27 @@ class ServerTest {
         // given
         val body = "Echo!"
         val server = Server(maxIncommingConnections = 1, handler = { request ->
-            Response(status = Status.OK, body = request.body, headers = request.headers)
+            Response(
+                    status = Status.OK,
+                    body = request.body,
+                    headers = request.headers)
         })
         val serverThreadPool = Executors.newSingleThreadExecutor()
         serverThreadPool.submit { server.start(8090) }
 
         // when
-        val connection = URL("http://localhost:8090/").openConnection() as HttpURLConnection
-        connection.run {
-            connectTimeout = 50
-            requestMethod = "POST"
-            setRequestProperty("X-Custom-Header", "ABC")
-            setFixedLengthStreamingMode(body.length)
-            doOutput = true
-            connect()
-        }
-        val writer = connection.outputStream.bufferedWriter()
-        writer.write(body)
-        writer.flush()
-        val responseCode = connection.responseCode
-        val response = connection.inputStream.bufferedReader().readText()
-        connection.disconnect()
+        val response = client.exchange(
+                url = "http://localhost:8090",
+                request = Request(
+                        path = "/",
+                        method = POST,
+                        headers = HttpHeaders("X-Custom-Header" to "ABC"),
+                        body = body))
 
         // then
-        assertThat(responseCode).isEqualTo(200)
-        assertThat(response).isEqualTo("Echo!")
-        assertThat(connection.getHeaderField("X-Custom-Header")).isEqualTo("ABC")
+        assertThat(response.status).isEqualTo(Status.OK)
+        assertThat(response.body).isEqualTo("Echo!")
+        assertThat(response.headers["X-Custom-Header"]).containsExactly("ABC")
 
         // cleanup
         server.close()
@@ -113,7 +105,7 @@ class ServerTest {
     @Test
     fun `server should throw bad request on random data`() {
         // given
-        val server = Server(maxIncommingConnections = 1, handler = { Response(status = Status.OK) })
+        val server = Server(maxIncommingConnections = 1, handler = { Response(Status.OK) })
         val serverThreadPool = Executors.newSingleThreadExecutor()
         serverThreadPool.submit { server.start(8090) }
 
@@ -123,8 +115,12 @@ class ServerTest {
         input.write("NOT VALID HTTP REQUEST\n")
         input.flush()
         val response = socket.getInputStream().bufferedReader().readText()
+        socket.close()
 
         // then
         assertThat(response).contains("400 Bad Request")
+
+        // cleanup
+        server.close()
     }
 }

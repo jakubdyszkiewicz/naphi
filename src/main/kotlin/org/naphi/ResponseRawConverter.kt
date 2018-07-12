@@ -12,7 +12,7 @@ fun Response.toRaw(): String {
 
 private fun Response.appendRawHeaders(buffer: StringBuffer) {
     headers.asSequence()
-            .joinTo(buffer) {
+            .joinTo(buffer, separator = "") {
                 (name, values) -> "$name: ${values.joinToString(", ")}\n"
             }
 }

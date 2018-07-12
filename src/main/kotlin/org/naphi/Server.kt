@@ -37,8 +37,12 @@ enum class RequestMethod {
 enum class Status(val code: Int, val reason: String) {
     OK(200, "OK"),
     BAD_REQUEST(400, "Bad Request"),
-    INTERNAL_SERVER_ERROR(500, "Internal Server Error")
+    INTERNAL_SERVER_ERROR(500, "Internal Server Error");
     // todo more status codes
+
+    companion object {
+        fun valueOfCode(code: Int) = values().first { it.code == code }
+    }
 }
 
 class HttpHeaders(private val mapOfHeaders: Map<String, Collection<String>> = emptyMap())
@@ -51,6 +55,7 @@ class HttpHeaders(private val mapOfHeaders: Map<String, Collection<String>> = em
     val contentLength: Int = this["Content-Length"].firstOrNull()?.toInt() ?: 0
 
     override operator fun get(key: String): Collection<String> = mapOfHeaders[key] ?: emptyList()
+    operator fun plus(pair: Pair<String, String>) = HttpHeaders(mapOfHeaders + (pair.first to listOf(pair.second)))
 }
 
 typealias Handler = (Request) -> Response
