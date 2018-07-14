@@ -1,8 +1,14 @@
 package org.naphi
 
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 const val PROTOCOL = "HTTP/1.1"
 
@@ -62,44 +68,81 @@ typealias Handler = (Request) -> Response
 
 class Server(
         val handler: Handler,
-        val maxIncommingConnections: Int = 1
+        val maxIncommingConnections: Int = 10,
+        val maxWorkerThreads: Int = 50
 ): AutoCloseable {
 
+    private val logger = LoggerFactory.getLogger(Server::class.java)
+
     private lateinit var serverSocket: ServerSocket
-    @Volatile
-    private var running = false
+    private val handlerThreadPool = Executors.newFixedThreadPool(maxWorkerThreads, IncrementingThreadFactory("server-handler"))
+    private val acceptingConnectionsThreadPool = Executors.newSingleThreadExecutor(IncrementingThreadFactory("server-connections-acceptor"))
 
     fun start(port: Int) {
+        logger.info("Starting server on port $port")
         serverSocket = ServerSocket(port, maxIncommingConnections)
-        running = true
-        while (running) {
-            serverSocket.accept().use(this::handleConnection)
+        acceptingConnectionsThreadPool.submit(this::acceptConnections)
+    }
+
+    private fun acceptConnections() {
+        while (!serverSocket.isClosed) {
+            try {
+                acceptConnection()
+            } catch (e: Exception) {
+                when {
+                    e is InterruptedException -> throw e
+                    e is SocketException && serverSocket.isClosed -> logger.trace("Socket was closed", e)
+                    else -> logger.error("Could not accept new connection", e)
+                }
+            }
+        }
+    }
+
+    private fun acceptConnection() {
+        val socket = serverSocket.accept()
+        handlerThreadPool.submit {
+            try {
+                handleConnection(socket)
+            } catch (e: Exception) {
+                logger.warn("Could not handle connection", e)
+            }
         }
     }
 
     private fun handleConnection(socket: Socket) {
-        val input = socket.getInputStream().bufferedReader()
-        val output = PrintWriter(socket.getOutputStream())
+        socket.use {
+            val input = it.getInputStream().bufferedReader()
+            val output = PrintWriter(it.getOutputStream())
 
-        val response = try {
-            val request = Request.fromRaw(input)
-            handler(request)
-        } catch (e: RequestParseException) {
-            Response(status = Status.BAD_REQUEST)
+            val response = try {
+                val request = Request.fromRaw(input)
+                handler(request)
+            } catch (e: RequestParseException) {
+                logger.warn("Could not parse a request", e)
+                Response(status = Status.BAD_REQUEST)
+            }
+            output.print(response.toRaw())
+            output.flush()
         }
-        output.print(response.toRaw())
-        output.flush()
     }
 
     override fun close() {
-        running = false
+        logger.info("Stopping server")
         serverSocket.close()
+        handlerThreadPool.shutdown()
+        handlerThreadPool.awaitTermination(1, TimeUnit.SECONDS)
+        acceptingConnectionsThreadPool.shutdown()
+        acceptingConnectionsThreadPool.awaitTermination(1, TimeUnit.SECONDS)
+    }
+
+    private class IncrementingThreadFactory(val prefix: String): ThreadFactory {
+        val adder = AtomicInteger()
+        override fun newThread(r: Runnable) = Thread(r).also { it.name = "$prefix-${adder.getAndIncrement()}" }
     }
 }
 
 fun main(args: Array<String>) {
-    Server(handler = { request ->
-        println(request)
+    Server(handler = {
         Response(status = Status.OK, body = "Hello, World!")
     }).start(port = 8090)
 }
