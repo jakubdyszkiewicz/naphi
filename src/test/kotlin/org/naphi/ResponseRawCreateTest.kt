@@ -31,6 +31,7 @@ class ResponseRawCreateTest {
         assertThat(response.toRaw()).isEqualTo("""
             HTTP/1.1 200 OK
 
+
         """.trimIndent())
     }
 }

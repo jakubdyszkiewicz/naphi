@@ -9,11 +9,12 @@ import java.net.Socket
 
 class ServerTest {
 
-    private val client = HttpUrlConnectionClient(connectionTimeout = 50, socketTimeout = 100)
+    private val client = ApacheHttpClient(connectionTimeout = 50, socketTimeout = 100)
     private lateinit var server: Server
 
     @After
     fun cleanup() {
+        client.close()
         server.close()
     }
 
@@ -42,7 +43,7 @@ class ServerTest {
             Response(
                     status = Status.OK,
                     body = request.body,
-                    headers = request.headers)
+                    headers = HttpHeaders("X-Custom-Header" to request.headers["X-Custom-Header"].first(), "Content-Length" to body.length.toString()))
         })
         server.start(port = 8090)
 
@@ -52,7 +53,7 @@ class ServerTest {
                 request = Request(
                         path = "/",
                         method = POST,
-                        headers = HttpHeaders("X-Custom-Header" to "ABC"),
+                        headers = HttpHeaders("X-Custom-Header" to "ABC", "Content-Length" to body.length.toString()),
                         body = body))
 
         // then
@@ -72,7 +73,7 @@ class ServerTest {
         val input = socket.getOutputStream().writer()
         input.write("NOT VALID HTTP REQUEST\n")
         input.flush()
-        val response = socket.getInputStream().bufferedReader().readText()
+        val response = socket.getInputStream().bufferedReader().readLine()
         socket.close()
 
         // then

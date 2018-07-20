@@ -6,7 +6,8 @@ import java.nio.CharBuffer
 private val headerRegex = "^(.+): (.+)$".toRegex()
 private val requestLineRegex = "^(.+) (.+) (.+)$".toRegex()
 
-class RequestParseException(msg: String): RuntimeException(msg)
+open class RequestParseException(msg: String): RuntimeException(msg)
+class EmptyRequestException : RequestParseException("Request must not be empty")
 
 private data class RequestLine(val method: RequestMethod, val path: String, val protocol: String)
 
@@ -18,7 +19,7 @@ fun Request.Companion.fromRaw(input: BufferedReader): Request {
 }
 
 private fun parseRequestLine(input: BufferedReader): RequestLine {
-    val requestLine = input.readLine() ?: throw RequestParseException("Request must not be empty")
+    val requestLine = input.readLine() ?: throw EmptyRequestException()
     val (methodRaw, path, protocol) = requestLineRegex.find(requestLine)?.destructured
             ?: throw RequestParseException("Invalid request line. It should match ${requestLineRegex.pattern} pattern")
     val method = RequestMethod.valueOfOrNull(methodRaw) ?: throw RequestParseException("Method $methodRaw is not supported")

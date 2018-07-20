@@ -6,7 +6,8 @@ fun Response.toRaw(): String {
     val buffer = StringBuffer()
     appendStatusLine(buffer)
     appendRawHeaders(buffer)
-    body?.let { buffer.append(HEADERS_BODY_SEPARATOR).append(it) }
+    buffer.append(HEADERS_BODY_SEPARATOR)
+    body?.let { buffer.append(it) }
     return buffer.toString()
 }
 
