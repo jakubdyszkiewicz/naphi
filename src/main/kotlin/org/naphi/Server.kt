@@ -1,40 +1,64 @@
 package org.naphi
 
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.net.ServerSocket
+import java.net.Socket
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-class Server(val maxIncommingConnections: Int = 1): AutoCloseable {
+class Server(
+        val port: Int,
+        val maxIncomingConnections: Int = 1): AutoCloseable {
 
-    private lateinit var serverSocket: ServerSocket
-    @Volatile
-    private var running = false
+    private val logger = LoggerFactory.getLogger(Server::class.java)
 
-    fun start(port: Int) {
-        serverSocket = ServerSocket(port, maxIncommingConnections) // start a socket that handles incoming connections
-        running = true
-        while (running) {
-            serverSocket.accept().use { socket ->
-                // we should use a buffered reader, otherwise we will be reading byte by byte which is inefficient
-                val input = socket.getInputStream().reader().buffered()
-                val output = PrintWriter(socket.getOutputStream())
+    private val serverSocket = ServerSocket(port, maxIncomingConnections)
+    private val threadPool = Executors.newSingleThreadExecutor()
 
-                println(input.readLine()) // let's read just one line, I will explain later why
-                Thread.sleep(5000)
-                output.print("""
-                        HTTP/1.1 200 OK
-
-                        Hello, World!""".trimIndent())
-                output.flush() // make sure we will send the response
+    init {
+        threadPool.submit {
+            try {
+                handleConnections()
+            } catch (e: Exception) {
+                logger.error("Problem while handling connections", e)
             }
         }
     }
 
+    private fun handleConnections() {
+        while (!serverSocket.isClosed) {
+            serverSocket.accept().use {
+                try {
+                    handleConnection(it)
+                } catch (e: Exception) {
+                    logger.warn("Problem while handling connection", e)
+                }
+            }
+        }
+    }
+
+    private fun handleConnection(socket: Socket) {
+        val input = socket.getInputStream().bufferedReader()
+        val output = PrintWriter(socket.getOutputStream())
+
+        val requestLine = input.readLine()
+        logger.info("Received request: {}", requestLine)
+        Thread.sleep(5000) // sleeping for 5s before writing response
+        output.print("""
+            HTTP/1.1 200 OK
+
+            Hello, World!""".trimIndent())
+        output.flush()
+    }
+
     override fun close() {
-        running = false
         serverSocket.close()
+        threadPool.shutdown()
+        threadPool.awaitTermination(1, TimeUnit.SECONDS)
     }
 }
 
 fun main(args: Array<String>) {
-    Server().start(port = 8090)
+    Server(port = 8090)
 }

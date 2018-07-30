@@ -13,9 +13,7 @@ class ServerTest {
     @Test
     fun `server should return OK hello world response`() {
         // given
-        val server = Server()
-        val threadPool = Executors.newSingleThreadExecutor()
-        threadPool.submit { server.start(8090) }
+        val server = Server(port = 8090)
 
         // when
         val connection = URL("http://localhost:8090/").openConnection() as HttpURLConnection
@@ -35,9 +33,7 @@ class ServerTest {
     @Test
     fun `server should refuse to accept more connections that maxIncommingConnections`() {
         // given
-        val server = Server(maxIncommingConnections = 1)
-        val serverThreadPool = Executors.newSingleThreadExecutor()
-        serverThreadPool.submit { server.start(8090) }
+        val server = Server(port = 8090, maxIncomingConnections = 1)
 
         // when
         val completedRequest = LongAdder() // we will be adding from multiple threads
@@ -54,7 +50,7 @@ class ServerTest {
                     }
                     connection.disconnect()
                 } catch (e: Exception) {
-                    println(e)
+                    e.printStackTrace()
                     throw e
                 }
             }
