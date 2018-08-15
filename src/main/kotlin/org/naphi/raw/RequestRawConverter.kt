@@ -1,9 +1,10 @@
-package org.naphi
+package org.naphi.raw
 
+import org.naphi.PROTOCOL
+import org.naphi.Request
+import org.naphi.RequestMethod
 import java.io.BufferedReader
-import java.nio.CharBuffer
 
-private val headerRegex = "^(.+): (.+)$".toRegex()
 private val requestLineRegex = "^(.+) (.+) (.+)$".toRegex()
 
 open class RequestParseException(msg: String): RuntimeException(msg)
@@ -22,31 +23,23 @@ private fun parseRequestLine(input: BufferedReader): RequestLine {
     val requestLine = input.readLine() ?: throw EmptyRequestException()
     val (methodRaw, path, protocol) = requestLineRegex.find(requestLine)?.destructured
             ?: throw RequestParseException("Invalid request line. It should match ${requestLineRegex.pattern} pattern")
-    val method = RequestMethod.valueOfOrNull(methodRaw) ?: throw RequestParseException("Method $methodRaw is not supported")
+    val method = RequestMethod.valueOfOrNull(methodRaw)
+            ?: throw RequestParseException("Method $methodRaw is not supported")
     if (protocol != PROTOCOL) {
         throw RequestParseException("Invalid protocol. Only $PROTOCOL is supported")
     }
     return RequestLine(method, path, protocol)
 }
 
-private fun parseHeaders(input: BufferedReader): HttpHeaders =
-        input.lineSequence()
-                .takeWhile { it.isNotBlank() }
-                .map {
-                    val (header, values) = headerRegex.find(it)?.destructured
-                            ?: throw RequestParseException("Invalid header line: $it")
-                    header to values.split(", ")
-                }
-                .toMap()
-                .let(::HttpHeaders)
+fun Request.toRaw(): String {
+    val buffer = StringBuffer()
+    appendRequestLine(buffer)
+    appendRawHeaders(this.headers, buffer)
+    appendBody(this.body, buffer)
+    return buffer.toString()
+}
 
-private fun parseBody(headers: HttpHeaders, input: BufferedReader): String? =
-        when {
-            headers.contentLength == 0 -> null
-            else -> {
-                val buffer = CharBuffer.allocate(headers.contentLength)
-                input.read(buffer)
-                buffer.flip()
-                buffer.toString()
-            }
-        }
+
+private fun Request.appendRequestLine(buffer: StringBuffer) {
+    buffer.append("${method.name} $path $PROTOCOL\n")
+}

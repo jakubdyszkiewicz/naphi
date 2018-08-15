@@ -3,8 +3,8 @@ package org.naphi
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
-import org.naphi.RequestMethod.GET
-import org.naphi.RequestMethod.HEAD
+import org.naphi.raw.RequestParseException
+import org.naphi.raw.fromRaw
 import java.io.StringReader
 
 class RequestParsingTest {

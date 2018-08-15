@@ -8,13 +8,64 @@ import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClientBuilder
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler
 import org.apache.http.util.EntityUtils
+import org.naphi.raw.fromRaw
+import org.naphi.raw.toRaw
+import java.io.PrintWriter
 import java.net.HttpURLConnection
+import java.net.Socket
 import java.net.URI
 import java.net.URL
+import java.time.Duration
 
 interface Client: AutoCloseable {
     fun exchange(url: String, request: Request): Response
     override fun close() {
+    }
+}
+
+class SocketClient(
+        val keepAliveTimeout: Duration = Duration.ofSeconds(30),
+        val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)
+) : Client {
+
+    private val connectionPool = ConnectionPool(keepAliveTimeout, checkKeepAliveInterval)
+
+    companion object {
+        const val DEFAULT_HTTP_PORT = 80
+        const val SUPPORTED_PROTOCOL = "http"
+    }
+
+    init {
+        connectionPool.start()
+    }
+
+    override fun exchange(url: String, request: Request): Response {
+        val parsedUrl = try {
+            URL(url)
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Invalid URL", e)
+        }
+        if (parsedUrl.protocol != SUPPORTED_PROTOCOL) {
+            throw IllegalArgumentException("${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported")
+        }
+
+        val socket = Socket(parsedUrl.host, if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port)
+        val connection = Connection(socket)
+        val input = connection.getInputStream().bufferedReader()
+        val output = PrintWriter(connection.getOutputStream())
+
+        val requestRaw = request.toRaw()
+        output.print(requestRaw)
+        output.flush()
+
+        val response = Response.fromRaw(input)
+        connection.close()
+
+        return response
+    }
+
+    override fun close() {
+        connectionPool.close()
     }
 }
 

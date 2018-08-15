@@ -2,6 +2,7 @@ package org.naphi
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import org.naphi.raw.toRaw
 
 class ResponseRawCreateTest {
 

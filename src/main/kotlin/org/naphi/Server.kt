@@ -1,15 +1,17 @@
 package org.naphi
 
 import org.naphi.commons.IncrementingThreadFactory
+import org.naphi.raw.EmptyRequestException
+import org.naphi.raw.RequestParseException
+import org.naphi.raw.fromRaw
+import org.naphi.raw.toRaw
 import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.SocketException
 import java.time.Duration
 import java.util.concurrent.Executors
-import java.util.concurrent.ThreadFactory
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 const val PROTOCOL = "HTTP/1.1"
 
@@ -24,7 +26,9 @@ data class Request(
 data class Response(
         val status: Status,
         val headers: HttpHeaders = HttpHeaders(),
-        val body: String? = null)
+        val body: String? = null) {
+    companion object
+}
 
 enum class RequestMethod {
     GET,
@@ -49,6 +53,7 @@ enum class Status(val code: Int, val reason: String) {
 
     companion object {
         fun valueOfCode(code: Int) = values().first { it.code == code }
+        fun findOfCode(code: Int) = values().firstOrNull { it.code == code }
     }
 }
 
