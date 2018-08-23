@@ -5,6 +5,7 @@ import org.junit.After
 import org.junit.Test
 import org.naphi.RequestMethod.GET
 import org.naphi.RequestMethod.POST
+import org.naphi.client.ApacheHttpClient
 import java.net.Socket
 
 class ServerTest {

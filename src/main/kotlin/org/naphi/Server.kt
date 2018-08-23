@@ -76,7 +76,7 @@ typealias Handler = (Request) -> Response
 
 class Server(
         val handler: Handler,
-        val maxIncommingConnections: Int = 10,
+        val maxIncommingConnections: Int = 1000,
         val maxWorkerThreads: Int = 50,
         val keepAliveTimeout: Duration = Duration.ofSeconds(30),
         val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)

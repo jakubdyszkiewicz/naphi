@@ -1,18 +1,22 @@
-package org.naphi
+package org.naphi.client
 
 import org.apache.http.Header
 import org.apache.http.HttpRequest
 import org.apache.http.client.config.RequestConfig
-import org.apache.http.client.methods.*
+import org.apache.http.client.methods.CloseableHttpResponse
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClientBuilder
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler
 import org.apache.http.util.EntityUtils
+import org.naphi.HttpHeaders
+import org.naphi.Request
+import org.naphi.Response
+import org.naphi.Status
 import org.naphi.raw.fromRaw
 import org.naphi.raw.toRaw
 import java.io.PrintWriter
 import java.net.HttpURLConnection
-import java.net.Socket
 import java.net.URI
 import java.net.URL
 import java.time.Duration
@@ -25,10 +29,14 @@ interface Client: AutoCloseable {
 
 class SocketClient(
         val keepAliveTimeout: Duration = Duration.ofSeconds(30),
-        val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)
+        val checkKeepAliveInterval: Duration = Duration.ofSeconds(1),
+        val maxConnectionsToDestination: Int = 10,
+        val connectionTimeout: Duration = Duration.ofMillis(500),
+        val socketTimeout: Duration = Duration.ofMillis(200),
+        val connectionRequestTimeout: Duration = Duration.ofSeconds(1)
 ) : Client {
 
-    private val connectionPool = ConnectionPool(keepAliveTimeout, checkKeepAliveInterval)
+    private val connectionPool = ClientConnectionPool(keepAliveTimeout, checkKeepAliveInterval, maxConnectionsToDestination, connectionTimeout, socketTimeout, connectionRequestTimeout)
 
     companion object {
         const val DEFAULT_HTTP_PORT = 80
@@ -49,8 +57,9 @@ class SocketClient(
             throw IllegalArgumentException("${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported")
         }
 
-        val socket = Socket(parsedUrl.host, if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port)
-        val connection = Connection(socket)
+        val connection = connectionPool.retrieveConnection(ConnectionDestination(
+                host = parsedUrl.host,
+                port = if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port))
         val input = connection.getInputStream().bufferedReader()
         val output = PrintWriter(connection.getOutputStream())
 
@@ -59,7 +68,7 @@ class SocketClient(
         output.flush()
 
         val response = Response.fromRaw(input)
-        connection.close()
+        connectionPool.releaseConnection(connection)
 
         return response
     }
@@ -67,7 +76,11 @@ class SocketClient(
     override fun close() {
         connectionPool.close()
     }
+
+    fun stats() = SocketClientStats(connectionPool.stats())
 }
+
+data class SocketClientStats(val poolStats: ConnectionClientPoolStats)
 
 class HttpUrlConnectionClient(
         val connectionTimeout: Int,
