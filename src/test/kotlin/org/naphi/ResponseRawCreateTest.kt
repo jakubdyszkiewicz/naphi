@@ -16,8 +16,8 @@ class ResponseRawCreateTest {
         // expect
         assertThat(response.toRaw()).isEqualTo("""
             HTTP/1.1 200 OK
-            Content-Length: 5
-            Content-Type: text/plain
+            content-length: 5
+            content-type: text/plain
 
             Hello
         """.trimIndent())

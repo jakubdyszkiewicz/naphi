@@ -2,10 +2,9 @@ package org.naphi
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
-import org.naphi.RequestMethod.*
-import java.net.HttpURLConnection
+import org.naphi.RequestMethod.GET
+import org.naphi.RequestMethod.POST
 import java.net.Socket
-import java.net.URL
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder

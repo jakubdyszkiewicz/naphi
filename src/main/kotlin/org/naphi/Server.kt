@@ -45,16 +45,22 @@ enum class Status(val code: Int, val reason: String) {
     }
 }
 
-class HttpHeaders(private val mapOfHeaders: Map<String, Collection<String>> = emptyMap())
-    : Map<String, Collection<String>> by mapOfHeaders {
+class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
+
+    private val mapOfHeaders: Map<String, Collection<String>> = mapOfHeaders.mapKeys { (k, _) -> k.toLowerCase() }
+
     constructor(vararg pairs: Pair<String, String>)
             : this(pairs.asSequence()
-            .map { (k, v) -> k to listOf(v) }
+            .groupBy { (name, _) -> name }
+            .mapValues { (_, namesWithValues) -> namesWithValues.map { (_, values) -> values } }
             .toMap())
 
-    val contentLength: Int = this["Content-Length"].firstOrNull()?.toInt() ?: 0
+    val size = this.mapOfHeaders.size
 
-    override operator fun get(key: String): Collection<String> = mapOfHeaders[key] ?: emptyList()
+    val contentLength: Int = this["content-length"].firstOrNull()?.toInt() ?: 0
+
+    fun asSequence() = mapOfHeaders.asSequence()
+    operator fun get(key: String): Collection<String> = mapOfHeaders[key.toLowerCase()] ?: emptyList()
     operator fun plus(pair: Pair<String, String>) = HttpHeaders(mapOfHeaders + (pair.first to listOf(pair.second)))
 }
 

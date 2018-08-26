@@ -26,7 +26,7 @@ class HttpUrlConnectionClient(
 
         val response = Response(
                 status = Status.valueOfCode(connection.responseCode),
-                headers = HttpHeaders(connection.headerFields),
+                headers = HttpHeaders(connection.headerFields.filterKeys { it != null }), // somehow there is entry with null
                 body = readResponseBody(connection))
         connection.disconnect()
         return response

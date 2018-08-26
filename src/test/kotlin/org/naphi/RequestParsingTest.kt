@@ -14,7 +14,7 @@ class RequestParsingTest {
         // given
         val input = """
             POST /sample HTTP/1.1
-            Content-Length: 11
+            content-length: 11
 
             Sample body
             """.trimIndent()
@@ -26,7 +26,7 @@ class RequestParsingTest {
         assertThat(request.method).isEqualTo(RequestMethod.POST)
         assertThat(request.path).isEqualTo("/sample")
         assertThat(request.headers.size).isEqualTo(1)
-        assertThat(request.headers["Content-Length"]).contains("11")
+        assertThat(request.headers.contentLength).isEqualTo(11)
         assertThat(request.body).isEqualTo("Sample body")
     }
 
@@ -110,6 +110,44 @@ class RequestParsingTest {
 
         // then
         assertThat(request.body).isNull()
+    }
+
+    @Test
+    fun `should merge multiple headers with same key into one`() {
+        // given
+        val input = """
+            POST /sample HTTP/1.1
+            x-sample: 1
+            X-Sample: 2
+
+            Sample body
+            """.trimIndent()
+
+        // when
+        val request = parseRequest(input)
+
+        // then
+        assertThat(request.headers["x-sample"]).containsExactly("1", "2")
+    }
+
+    @Test
+    fun `headers should be converted to lowercase`() {
+        // given
+        val input = """
+            POST /sample HTTP/1.1
+            NOT-LOWERCASE: 1
+            Another-Not-Lowercase: 2
+            lowercase: 3
+
+            Sample body
+            """.trimIndent()
+
+        // when
+        val request = parseRequest(input)
+
+        // then
+        assertThat(request.headers["not-lowercase"]).containsExactly("1")
+        assertThat(request.headers["another-not-lowercase"]).containsExactly("2")
     }
 
     private fun parseRequest(input: String): Request = Request.fromRaw(StringReader(input).buffered())
