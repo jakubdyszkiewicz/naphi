@@ -17,11 +17,9 @@ class ServerTest {
     fun `server should return OK hello world response`() {
         // given
         val body = "Hello, World!"
-        val server = Server(handler = {
+        val server = Server(port = 8090, handler = {
             Response(status = Status.OK, body = body, headers = HttpHeaders("Content-Length" to body.length.toString()))
         })
-        val threadPool = Executors.newSingleThreadExecutor()
-        threadPool.submit { server.start(8090) }
 
         // when
         val response = client.exchange(url = "http://localhost:8090", request = Request(path = "/", method = GET))
@@ -37,12 +35,10 @@ class ServerTest {
     @Test
     fun `server should refuse to accept more connections that maxIncommingConnections`() {
         // given
-        val server = Server(maxIncommingConnections = 1, handler = {
+        val server = Server(port = 8090, maxIncomingConnections = 1, handler = {
             Thread.sleep(100)
             Response(Status.OK)
         })
-        val serverThreadPool = Executors.newSingleThreadExecutor()
-        serverThreadPool.submit { server.start(8090) }
 
         // when
         val completedRequest = LongAdder() // we will be adding from multiple threads
@@ -74,14 +70,12 @@ class ServerTest {
     fun `server should echo body and headers`() {
         // given
         val body = "Echo!"
-        val server = Server(maxIncommingConnections = 1, handler = { request ->
+        val server = Server(port = 8090, maxIncomingConnections = 1, handler = { request ->
             Response(
                     status = Status.OK,
                     body = request.body,
                     headers = request.headers)
         })
-        val serverThreadPool = Executors.newSingleThreadExecutor()
-        serverThreadPool.submit { server.start(8090) }
 
         // when
         val response = client.exchange(
@@ -104,9 +98,7 @@ class ServerTest {
     @Test
     fun `server should throw bad request on random data`() {
         // given
-        val server = Server(maxIncommingConnections = 1, handler = { Response(Status.OK) })
-        val serverThreadPool = Executors.newSingleThreadExecutor()
-        serverThreadPool.submit { server.start(8090) }
+        val server = Server(port = 8090, maxIncomingConnections = 1, handler = { Response(Status.OK) })
 
         // when
         val socket = Socket("localhost", 8090)

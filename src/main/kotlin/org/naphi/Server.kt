@@ -1,8 +1,11 @@
 package org.naphi
 
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 const val PROTOCOL = "HTTP/1.1"
 
@@ -68,18 +71,34 @@ typealias Handler = (Request) -> Response
 
 class Server(
         val handler: Handler,
-        val maxIncommingConnections: Int = 1
+        val port: Int,
+        val maxIncomingConnections: Int = 1
 ): AutoCloseable {
 
-    private lateinit var serverSocket: ServerSocket
-    @Volatile
-    private var running = false
+    private val logger = LoggerFactory.getLogger(Server::class.java)
 
-    fun start(port: Int) {
-        serverSocket = ServerSocket(port, maxIncommingConnections)
-        running = true
-        while (running) {
-            serverSocket.accept().use(this::handleConnection)
+    private val serverSocket = ServerSocket(port, maxIncomingConnections)
+    private val threadPool = Executors.newSingleThreadExecutor()
+
+    init {
+        threadPool.submit {
+            try {
+                handleConnections()
+            } catch (e: Exception) {
+                logger.error("Problem while handling connections", e)
+            }
+        }
+    }
+
+    private fun handleConnections() {
+        while (!serverSocket.isClosed) {
+            serverSocket.accept().use {
+                try {
+                    handleConnection(it)
+                } catch (e: Exception) {
+                    logger.warn("Problem while handling connection", e)
+                }
+            }
         }
     }
 
@@ -98,14 +117,15 @@ class Server(
     }
 
     override fun close() {
-        running = false
         serverSocket.close()
+        threadPool.shutdown()
+        threadPool.awaitTermination(1, TimeUnit.SECONDS)
     }
 }
 
 fun main(args: Array<String>) {
-    Server(handler = { request ->
+    Server(port = 8090, handler = { request ->
         println(request)
         Response(status = Status.OK, body = "Hello, World!")
-    }).start(port = 8090)
+    })
 }
