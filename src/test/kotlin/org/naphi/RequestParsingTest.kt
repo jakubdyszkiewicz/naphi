@@ -26,7 +26,7 @@ class RequestParsingTest {
         assertThat(request.method).isEqualTo(RequestMethod.POST)
         assertThat(request.path).isEqualTo("/sample")
         assertThat(request.headers.size).isEqualTo(1)
-        assertThat(request.headers["Content-Length"]).contains("11")
+        assertThat(request.headers["content-length"]).contains("11")
         assertThat(request.body).isEqualTo("Sample body")
     }
 

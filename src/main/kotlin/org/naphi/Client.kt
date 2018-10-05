@@ -37,7 +37,7 @@ class HttpUrlConnectionClient(
 
         val response = Response(
                 status = Status.valueOfCode(connection.responseCode),
-                headers = HttpHeaders(connection.headerFields),
+                headers = HttpHeaders(connection.headerFields.filterKeys { it != null }), // somehow there is entry with null
                 body = readResponseBody(connection))
         connection.disconnect()
         return response
@@ -105,7 +105,7 @@ class ApacheHttpClient(
 
     private fun setHeaders(request: Request, apacheRequest: HttpRequest) {
         request.headers.asSequence()
-                .filter { it.key != "Content-Length" }
+                .filter { it.key.toLowerCase() != "content-length" }
                 .forEach { (key, values) -> apacheRequest.addHeader(key, values.first()) }
     }
 

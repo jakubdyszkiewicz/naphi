@@ -35,9 +35,10 @@ private fun parseHeaders(input: BufferedReader): HttpHeaders =
                 .map {
                     val (header, values) = headerRegex.find(it)?.destructured
                             ?: throw RequestParseException("Invalid header line: $it")
-                    header to values.split(", ")
+                    header.toLowerCase() to values.split(", ")
                 }
-                .toMap()
+                .groupBy { (name, _) -> name }
+                .mapValues { (_, valuesWithNames) -> valuesWithNames.map { (_, values) -> values }.flatten() }
                 .let(::HttpHeaders)
 
 private fun parseBody(headers: HttpHeaders, input: BufferedReader): String? =

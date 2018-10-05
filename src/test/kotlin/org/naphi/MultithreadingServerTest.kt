@@ -21,11 +21,10 @@ class MultithreadingServerTest {
     @Test
     fun `should process multiple requests at once`() {
         // given
-        server = Server(handler = {
+        server = Server(port = 8090, handler = {
             Thread.sleep(700)
             Response(Status.OK, headers = HttpHeaders("Content-Length" to "0"))
         })
-        server.start(8090)
 
         // when
         val completedRequests = LongAdder()
