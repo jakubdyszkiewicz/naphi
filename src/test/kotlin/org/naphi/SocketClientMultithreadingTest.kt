@@ -23,11 +23,10 @@ class SocketClientMultithreadingTest {
     @Before
     fun setupServers() {
         repeat(nServers) {
-            val server = Server(handler = {
+            val server = Server(port = 8090 + it, handler = {
 //                Thread.sleep(100)
                 Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
             })
-            server.start(port = 8090 + it)
             servers += server
         }
     }

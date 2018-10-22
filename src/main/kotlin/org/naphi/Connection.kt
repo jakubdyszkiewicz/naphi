@@ -24,9 +24,9 @@ class ConnectionPool(
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
             IncrementingThreadFactory("connection-pool-checker"))
 
-    private val connectionsMade = LongAdder()
+    private val connectionsEstablished = LongAdder()
 
-    fun start() {
+    init {
         scheduleClosingStaleConnections()
     }
 
@@ -53,7 +53,7 @@ class ConnectionPool(
         Duration.ofMillis(System.currentTimeMillis() - connection.lastActivityTime) > keepAliveTimeout
 
     fun addConnection(connection: Connection) {
-        connectionsMade.increment()
+        connectionsEstablished.increment()
         connections += connection
     }
 
@@ -62,7 +62,7 @@ class ConnectionPool(
         checkerThreadPool.awaitTermination(1, TimeUnit.SECONDS)
     }
 
-    fun connectionsMade() = connectionsMade.sum()
+    fun connectionsEstablished() = connectionsEstablished.sum()
 }
 
 class Connection(private val socket: Socket) {

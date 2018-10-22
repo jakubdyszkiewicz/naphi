@@ -29,13 +29,12 @@ class SocketClientTest {
     fun `server should echo body and headers`() {
         // given
         val body = "Echo!"
-        server = Server(handler = { request ->
+        server = Server(port = 8090, handler = { request ->
             Response(
                     status = Status.OK,
                     body = request.body,
-                    headers = HttpHeaders("X-Custom-Header" to request.headers["X-Custom-Header"].first(), "Content-Length" to body.length.toString()))
+                    headers = HttpHeaders("x-custom-header" to request.headers["x-custom-header"].first(), "content-length" to body.length.toString()))
         })
-        server.start(port = 8090)
 
         // when
         val response = client.exchange(
@@ -43,22 +42,21 @@ class SocketClientTest {
                 request = Request(
                         path = "/",
                         method = RequestMethod.POST,
-                        headers = HttpHeaders("X-Custom-Header" to "ABC", "Content-Length" to body.length.toString()),
+                        headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
                         body = body))
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
         assertThat(response.body).isEqualTo("Echo!")
-        assertThat(response.headers["X-Custom-Header"]).containsExactly("ABC")
+        assertThat(response.headers["x-custom-header"]).containsExactly("ABC")
     }
 
     @Test
     fun `client should reuse opened connections`() {
         // given
-        server = Server(handler = {
-            Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
+        server = Server(port = 8090, handler = {
+            Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
         })
-        server.start(port = 8090)
 
         // when
         repeat(times = 3) {
@@ -67,21 +65,20 @@ class SocketClientTest {
                     request = Request(
                             path = "/",
                             method = RequestMethod.POST,
-                            headers = HttpHeaders("Content-Length" to "0")))
+                            headers = HttpHeaders("content-length" to "0")))
         }
 
         // then
-        assertThat(server.connectionsMade()).isEqualTo(1)
+        assertThat(server.connectionsEstablished()).isEqualTo(1)
     }
 
     @Test
     fun `client should open up to 2 connections`() {
         // given
-        server = Server(handler = {
+        server = Server(port = 8090, handler = {
             Thread.sleep(1000)
-            Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
+            Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
         })
-        server.start(port = 8090)
         val successCalls = LongAdder()
 
         // when
@@ -93,7 +90,7 @@ class SocketClientTest {
                         request = Request(
                                 path = "/",
                                 method = RequestMethod.POST,
-                                headers = HttpHeaders("Content-Length" to "0")))
+                                headers = HttpHeaders("content-length" to "0")))
                 if (response.status == Status.OK) {
                     successCalls.increment()
                 }
@@ -103,17 +100,16 @@ class SocketClientTest {
 
         // then
         assertThat(successCalls.sum()).isEqualTo(3)
-        assertThat(server.connectionsMade()).isEqualTo(2)
+        assertThat(server.connectionsEstablished()).isEqualTo(2)
     }
 
     @Test
     fun `client should close stale connections`() {
         // given
-        server = Server(handler = {
+        server = Server(port = 8090, handler = {
             Thread.sleep(1000)
-            Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
+            Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
         })
-        server.start(port = 8090)
         val client = SocketClient(
                 keepAliveTimeout = Duration.ofMillis(1000),
                 checkKeepAliveInterval = Duration.ofMillis(100),
@@ -125,7 +121,7 @@ class SocketClientTest {
                 request = Request(
                         path = "/",
                         method = RequestMethod.POST,
-                        headers = HttpHeaders("Content-Length" to "0")))
+                        headers = HttpHeaders("content-length" to "0")))
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
@@ -139,11 +135,11 @@ class SocketClientTest {
                 request = Request(
                         path = "/",
                         method = RequestMethod.POST,
-                        headers = HttpHeaders("Content-Length" to "0")))
+                        headers = HttpHeaders("content-length" to "0")))
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
-        assertThat(server.connectionsMade()).isEqualTo(2)
+        assertThat(server.connectionsEstablished()).isEqualTo(2)
     }
 
     @Test
@@ -157,18 +153,17 @@ class SocketClientTest {
                 request = Request(
                         path = "/",
                         method = RequestMethod.POST,
-                        headers = HttpHeaders("Content-Length" to "0"))) }
+                        headers = HttpHeaders("content-length" to "0"))) }
                 .isInstanceOf(ConnectionTimeoutException::class.java)
     }
 
     @Test
     fun `should throw exception when server exceeded socket timeout`() {
         // given
-        server = Server(handler = {
+        server = Server(port = 8090, handler = {
             Thread.sleep(2100)
-            Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
+            Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
         })
-        server.start(port = 8090)
 
         // when & then
         assertThatThrownBy { client.exchange(
@@ -176,7 +171,7 @@ class SocketClientTest {
                 request = Request(
                         path = "/",
                         method = RequestMethod.POST,
-                        headers = HttpHeaders("Content-Length" to "0"))) }
+                        headers = HttpHeaders("content-length" to "0"))) }
                 .isInstanceOf(SocketTimeoutException::class.java)
     }
 

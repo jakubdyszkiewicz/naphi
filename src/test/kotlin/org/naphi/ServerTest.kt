@@ -23,10 +23,9 @@ class ServerTest {
     fun `server should return OK hello world response`() {
         // given
         val body = "Hello, World!"
-        server = Server(handler = {
+        server = Server(port = 8090, handler = {
             Response(status = Status.OK, body = body, headers = HttpHeaders("Content-Length" to body.length.toString()))
         })
-        server.start(port = 8090)
 
         // when
         val response = client.exchange(url = "http://localhost:8090", request = Request(path = "/", method = GET))
@@ -40,13 +39,12 @@ class ServerTest {
     fun `server should echo body and headers`() {
         // given
         val body = "Echo!"
-        server = Server(handler = { request ->
+        server = Server(port = 8090, handler = { request ->
             Response(
                     status = Status.OK,
                     body = request.body,
-                    headers = HttpHeaders("X-Custom-Header" to request.headers["X-Custom-Header"].first(), "Content-Length" to body.length.toString()))
+                    headers = HttpHeaders("x-custom-header" to request.headers["x-custom-header"].first(), "content-length" to body.length.toString()))
         })
-        server.start(port = 8090)
 
         // when
         val response = client.exchange(
@@ -54,20 +52,19 @@ class ServerTest {
                 request = Request(
                         path = "/",
                         method = POST,
-                        headers = HttpHeaders("X-Custom-Header" to "ABC", "Content-Length" to body.length.toString()),
+                        headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
                         body = body))
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
         assertThat(response.body).isEqualTo("Echo!")
-        assertThat(response.headers["X-Custom-Header"]).containsExactly("ABC")
+        assertThat(response.headers["x-custom-header"]).containsExactly("ABC")
     }
 
     @Test
     fun `server should throw bad request on random data`() {
         // given
-        server = Server(handler = { Response(Status.OK) })
-        server.start(port = 8090)
+        server = Server(port = 8090, handler = { Response(Status.OK) })
 
         // when
         val socket = Socket("localhost", 8090)

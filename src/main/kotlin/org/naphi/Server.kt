@@ -57,17 +57,22 @@ enum class Status(val code: Int, val reason: String) {
     }
 }
 
-class HttpHeaders(private val mapOfHeaders: Map<String, Collection<String>> = emptyMap())
-    : Map<String, Collection<String>> by mapOfHeaders {
+class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
+
+    private val mapOfHeaders: Map<String, Collection<String>> = mapOfHeaders.mapKeys { (k, _) -> k.toLowerCase() }
+
     constructor(vararg pairs: Pair<String, String>)
             : this(pairs.asSequence()
-            .map { (k, v) -> k to listOf(v) }
+            .groupBy { (name, _) -> name }
+            .mapValues { (_, namesWithValues) -> namesWithValues.map { (_, values) -> values } }
             .toMap())
 
-    val contentLength: Int = this["Content-Length"].firstOrNull()?.toIntOrNull() ?: 0
-    val connection: String? = this["Connection"].firstOrNull()
+    val contentLength: Int = this["content-length"].firstOrNull()?.toIntOrNull() ?: 0
+    val connection: String? = this["connection"].firstOrNull()
+    val size: Int = mapOfHeaders.size
 
-    override operator fun get(key: String): Collection<String> = mapOfHeaders[key] ?: emptyList()
+    fun asSequence() = mapOfHeaders.asSequence()
+    operator fun get(key: String): Collection<String> = mapOfHeaders[key] ?: emptyList()
     operator fun plus(pair: Pair<String, String>) = HttpHeaders(mapOfHeaders + (pair.first to listOf(pair.second)))
     override fun toString(): String = "HttpHeaders($mapOfHeaders)"
 }
@@ -76,7 +81,8 @@ typealias Handler = (Request) -> Response
 
 class Server(
         val handler: Handler,
-        val maxIncommingConnections: Int = 1000,
+        val port: Int,
+        val maxIncomingConnections: Int = 10,
         val maxWorkerThreads: Int = 50,
         val keepAliveTimeout: Duration = Duration.ofSeconds(30),
         val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)
@@ -84,16 +90,14 @@ class Server(
 
     private val logger = LoggerFactory.getLogger(Server::class.java)
 
-    private lateinit var serverSocket: ServerSocket
+    private val serverSocket = ServerSocket(port, maxIncomingConnections)
     private val handlerThreadPool = Executors.newFixedThreadPool(maxWorkerThreads, IncrementingThreadFactory("server-handler"))
     private val acceptingConnectionsThreadPool = Executors.newSingleThreadExecutor(IncrementingThreadFactory("server-connections-acceptor"))
     private val connectionPool = ConnectionPool(keepAliveTimeout, checkKeepAliveInterval)
 
-    fun start(port: Int) {
+    init {
         logger.info("Starting server on port $port")
-        serverSocket = ServerSocket(port, maxIncommingConnections)
         acceptingConnectionsThreadPool.submit(this::acceptConnections)
-        connectionPool.start()
     }
 
     private fun acceptConnections() {
@@ -161,11 +165,11 @@ class Server(
         acceptingConnectionsThreadPool.awaitTermination(1, TimeUnit.SECONDS)
     }
 
-    fun connectionsMade() = connectionPool.connectionsMade()
+    fun connectionsEstablished() = connectionPool.connectionsEstablished()
 }
 
 fun main(args: Array<String>) {
-    Server(handler = {
+    Server(port = 8090, handler = {
         Response(status = Status.OK, body = "Hello, World!", headers = HttpHeaders("Connection" to "Keep-Alive", "Content-Length" to "Hello, World!".length.toString()))
-    }).start(port = 8090)
+    })
 }
