@@ -29,14 +29,11 @@ class SocketClient(
         private val logger = LoggerFactory.getLogger(SocketClient::class.java)
     }
 
-    init {
-        connectionPool.start()
-    }
-
     override fun exchange(url: String, request: Request): Response {
         val parsedUrl = URL(url)
         if (parsedUrl.protocol != SUPPORTED_PROTOCOL) {
-            throw SocketClientException("${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported")
+            throw SocketClientException("${parsedUrl.protocol} is not supported. " +
+                    "Only $SUPPORTED_PROTOCOL is supported")
         }
 
         val connection = connectionPool.retrieveConnection(ConnectionDestination(

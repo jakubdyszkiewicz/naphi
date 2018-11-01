@@ -15,21 +15,22 @@ import java.util.concurrent.*
 class SocketClientMultithreadingTest {
 
     val requestParallelism = 100
-    val requests = 1000000
+    val requests = 1_000_000
     val sampleRate = 10
     val nServers = 10
     val servers = mutableListOf<Server>()
-    val client = SocketClient(maxConnectionsToDestination = 10, socketTimeout = Duration.ofSeconds(10), connectionTimeout = Duration.ofSeconds(10))
+    val client = SocketClient(maxConnectionsToDestination = 5,
+            socketTimeout = Duration.ofSeconds(10),
+            connectionTimeout = Duration.ofSeconds(1),
+            connectionRequestTimeout = Duration.ofSeconds(10))
     val random = Random()
 
     @Before
     fun setupServers() {
         repeat(nServers) {
-            val server = Server(port = 8090 + it, handler = {
-                //                Thread.sleep(100)
-                Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
+            servers += Server(port = 8090 + it, handler = {
+                Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
             })
-            servers += server
         }
     }
 
@@ -44,7 +45,7 @@ class SocketClientMultithreadingTest {
 
     @Test
     @Ignore("This is HEAVY test")
-    fun `should allow to open max 3 connections to destination`() {
+    fun `should allow to open max of 5 connections to a destination`() {
         val threadPool = Executors.newFixedThreadPool(requestParallelism)
         val requestsDone = CountDownLatch(requests)
         val errors = mutableListOf<String>()
@@ -58,7 +59,7 @@ class SocketClientMultithreadingTest {
                             request = Request(
                                     path = "/",
                                     method = RequestMethod.POST,
-                                    headers = HttpHeaders("Content-Length" to "0")))
+                                    headers = HttpHeaders("content-length" to "0")))
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw e
@@ -69,7 +70,7 @@ class SocketClientMultithreadingTest {
                 requestsDone.countDown()
             }
         }
-        requestsDone.await(40, TimeUnit.SECONDS)
+        requestsDone.await(1, TimeUnit.MINUTES)
         assertThat(errors).isEmpty()
         assertThat(requestsDone.count).isEqualTo(0)
         assertThat(client.stats().poolStats.connectionsEstablished.toInt())

@@ -92,7 +92,7 @@ internal class ClientConnectionPool(
     private val retrievingSemaphores = ConcurrentHashMap<ConnectionDestination, Semaphore>()
     private val connectionsEstablished = LongAdder()
 
-    fun start() {
+    init {
         scheduleClosingStaleConnections()
     }
 
@@ -108,7 +108,7 @@ internal class ClientConnectionPool(
         logger.trace("Waiting for acquire permit to retrieve connection to $destination")
         if (!semaphore(destination).tryAcquire(connectionRequestTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
             throw ClientConnectionPoolException(
-                    "Timeout on waiting to retrieve connection. Limit of open connections exceeded.")
+                    "Timeout on waiting to retrieve the connection. Limit of open connections exceeded.")
         }
     }
 
@@ -127,7 +127,7 @@ internal class ClientConnectionPool(
         val socket = try {
             Socket().also {
                 it.soTimeout = socketTimeout.toMillis().toInt()
-                it.connect(InetSocketAddress(destination.host, destination.port), connectionTimeout.toMillis().toInt())
+                it.connect(destination.toInetSocketAddress(), connectionTimeout.toMillis().toInt())
             }
         } catch (e: SocketTimeoutException) {
             throw ConnectionTimeoutException(destination)
@@ -169,8 +169,9 @@ internal class ClientConnectionPool(
 
 }
 
-data class ConnectionDestination(val host: String, val port: Int) {
+internal data class ConnectionDestination(val host: String, val port: Int) {
     override fun toString(): String = "$host:$port"
+    fun toInetSocketAddress() = InetSocketAddress(host, port)
 }
 
 internal class Connection(
@@ -190,9 +191,9 @@ internal class Connection(
     private var checks: Int = 0
 
     /**
-     * If the connection is checked for inactivity for inactiveChecksThreshold times and there was no activity it is
-     * assumed that connection is no longer active. It is optimization so we don't have to call time() for every byte
-     * on socket.
+     * If the connection is checked for inactivity for inactiveChecksThreshold times and there was no activity
+     * it is assumed that connection is no longer active. It is optimization so we don't have to call time()
+     * for every byte on socket.
      */
     private val inactiveChecksThreshold = (keepAliveTimeout.toMillis() / checkKeepAliveInterval.toMillis()).toInt()
 
@@ -239,5 +240,5 @@ internal class Connection(
     }
 }
 
-class ConnectionTimeoutException(destination: ConnectionDestination): ConnectionException("Connection to $destination timeout out")
+class ConnectionTimeoutException internal constructor(destination: ConnectionDestination): ConnectionException("Connection to $destination timeout out")
 open class ConnectionException(msg: String, throwable: Throwable? = null): RuntimeException(msg, throwable)
