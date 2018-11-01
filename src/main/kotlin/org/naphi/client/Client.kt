@@ -15,7 +15,9 @@ import org.naphi.Response
 import org.naphi.Status
 import org.naphi.raw.fromRaw
 import org.naphi.raw.toRaw
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
+import java.lang.RuntimeException
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
@@ -36,11 +38,14 @@ class SocketClient(
         val connectionRequestTimeout: Duration = Duration.ofSeconds(1)
 ) : Client {
 
-    private val connectionPool = ClientConnectionPool(keepAliveTimeout, checkKeepAliveInterval, maxConnectionsToDestination, connectionTimeout, socketTimeout, connectionRequestTimeout)
+    private val connectionPool = ClientConnectionPool(keepAliveTimeout, checkKeepAliveInterval,
+            maxConnectionsToDestination, connectionTimeout, socketTimeout, connectionRequestTimeout)
 
     companion object {
         const val DEFAULT_HTTP_PORT = 80
         const val SUPPORTED_PROTOCOL = "http"
+
+        private val logger = LoggerFactory.getLogger(SocketClient::class.java)
     }
 
     init {
@@ -48,18 +53,25 @@ class SocketClient(
     }
 
     override fun exchange(url: String, request: Request): Response {
-        val parsedUrl = try {
-            URL(url)
-        } catch (e: Exception) {
-            throw IllegalArgumentException("Invalid URL", e)
-        }
+        val parsedUrl = URL(url)
         if (parsedUrl.protocol != SUPPORTED_PROTOCOL) {
-            throw IllegalArgumentException("${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported")
+            throw SocketClientException("${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported")
         }
 
         val connection = connectionPool.retrieveConnection(ConnectionDestination(
                 host = parsedUrl.host,
                 port = if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port))
+        try {
+            return exchange(connection, request)
+        } catch (e: Exception) {
+            connection.close()
+            throw SocketClientException("Error while exchanging data", e)
+        } finally {
+            connectionPool.releaseConnection(connection)
+        }
+    }
+
+    private fun exchange(connection: Connection, request: Request): Response {
         val input = connection.getInputStream().bufferedReader()
         val output = PrintWriter(connection.getOutputStream())
 
@@ -67,10 +79,7 @@ class SocketClient(
         output.print(requestRaw)
         output.flush()
 
-        val response = Response.fromRaw(input)
-        connectionPool.releaseConnection(connection)
-
-        return response
+        return Response.fromRaw(input)
     }
 
     override fun close() {
@@ -80,6 +89,7 @@ class SocketClient(
     fun stats() = SocketClientStats(connectionPool.stats())
 }
 
+open class SocketClientException(msg: String, throwable: Throwable? = null): RuntimeException(msg, throwable)
 data class SocketClientStats(val poolStats: ConnectionClientPoolStats)
 
 class HttpUrlConnectionClient(

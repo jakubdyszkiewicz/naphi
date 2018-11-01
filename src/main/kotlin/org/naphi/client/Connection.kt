@@ -11,11 +11,7 @@ import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.LongAdder
 
-fun main(args: Array<String>) {
-    println(LinkedBlockingDeque<String>().poll())
-}
-
-private class Connections(val inactiveChecksThreshold: Int) {
+private class Connections {
 
     companion object {
         private val logger = LoggerFactory.getLogger(Connections::class.java)
@@ -24,19 +20,21 @@ private class Connections(val inactiveChecksThreshold: Int) {
     private val connections = ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>()
 
     fun addConnection(connection: Connection) {
-        connections.computeIfAbsent(connection.destination) { LinkedBlockingDeque() } += connection
+        connections(connection.destination) += connection
     }
+
+    private fun connections(destination: ConnectionDestination) =
+            (connections.computeIfAbsent(destination) { LinkedBlockingDeque() })
 
     fun removeConnection(connection: Connection) {
         connections[connection.destination]?.removeIf { it == connection }
     }
 
-    fun leaseConnection(destination: ConnectionDestination): Connection? =
-            (connections.computeIfAbsent(destination) { LinkedBlockingDeque() }).poll()
+    fun leaseConnection(destination: ConnectionDestination): Connection? = connections(destination).poll()
 
     fun closeStaleConnections() {
         this.connections.forEach { _, connections ->
-            val staleConnections = connections.filter(this::isConnectionInactive)
+            val staleConnections = connections.filter(Connection::isInactive)
             connections.removeAll(staleConnections)
             staleConnections.forEach {
                 logger.debug("Closing connection to ${it.destination} due to not being active")
@@ -44,9 +42,6 @@ private class Connections(val inactiveChecksThreshold: Int) {
             }
         }
     }
-
-    private fun isConnectionInactive(connection: Connection): Boolean =
-            connection.checkInactivity() > inactiveChecksThreshold
 
 }
 
@@ -65,20 +60,13 @@ class ClientConnectionPool(
 
     private val logger = LoggerFactory.getLogger(ClientConnectionPool::class.java)
 
-    /**
-     * If the connection is checked for inactivity for inactiveChecksThreshold times and there was no activity it is
-     * assumed that connection is no longer active. It is optimization so we don't have to call time() for every byte
-     * on socket.
-     */
-    private val inactiveChecksThreshold = (keepAliveTimeout.toMillis() / checkKeepAliveInterval.toMillis()).toInt()
-
-    private val availableConnections = Connections(inactiveChecksThreshold)
-    private val leasedConnections = Connections(inactiveChecksThreshold)
+    private val availableConnections = Connections()
+    private val leasedConnections = Connections()
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
             IncrementingThreadFactory("connection-pool-checker"))
     private val retrievingSemaphores = ConcurrentHashMap<ConnectionDestination, Semaphore>()
 
-    private val createConnectionThreadPool = Executors.newFixedThreadPool(100) // param size of this thread pool
+    private val createConnectionThreadPool = Executors.newFixedThreadPool(100) // TODO param size of this thread pool and name it
 
     private val connectionsEstablished = LongAdder()
 
@@ -86,6 +74,9 @@ class ClientConnectionPool(
         scheduleClosingStaleConnections()
     }
 
+    /**
+     * You have to manually call `releaseConnection()` when you are done with using the connection
+     */
     fun retrieveConnection(destination: ConnectionDestination): Connection {
         acquirePermit(destination)
         return leaseConnection(destination) ?: createConnection(destination)
@@ -94,7 +85,8 @@ class ClientConnectionPool(
     private fun acquirePermit(destination: ConnectionDestination) {
         logger.trace("Waiting for acquire permit to retrieve connection to $destination")
         if (!semaphore(destination).tryAcquire(connectionRequestTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
-            throw ClientConnectionPoolException("Timeout on waiting to retrieve connection. Limit of open connections exceeded.")
+            throw ClientConnectionPoolException(
+                    "Timeout on waiting to retrieve connection. Limit of open connections exceeded.")
         }
     }
 
@@ -122,7 +114,7 @@ class ClientConnectionPool(
         } catch (e: Exception) {
             throw ConnectionException("Could not connect to $destination", e)
         }
-        val connection = Connection(socket, destination)
+        val connection = Connection(socket, destination, keepAliveTimeout, checkKeepAliveInterval)
         logger.debug("Created connection to $destination")
         leasedConnections.addConnection(connection)
         connectionsEstablished.increment()
@@ -171,14 +163,35 @@ data class ConnectionDestination(val host: String, val port: Int) {
 
 class Connection(
         private val socket: Socket,
-        val destination: ConnectionDestination
+        val destination: ConnectionDestination,
+        private val keepAliveTimeout: Duration,
+        private val checkKeepAliveInterval: Duration
 ) {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(Connection::class.java)
+    }
+
+    /**
+     * Counter that is incremented on periodic inactivity check. It is reset on new connection activity
+     */
     private var checks: Int = 0
 
-    fun checkInactivity(): Int = checks++
+    /**
+     * If the connection is checked for inactivity for inactiveChecksThreshold times and there was no activity it is
+     * assumed that connection is no longer active. It is optimization so we don't have to call time() for every byte
+     * on socket.
+     */
+    private val inactiveChecksThreshold = (keepAliveTimeout.toMillis() / checkKeepAliveInterval.toMillis()).toInt()
+
+    internal fun isInactive(): Boolean = checks++ > inactiveChecksThreshold
 
     fun close() {
-        socket.close()
+        try {
+            socket.close()
+        } catch (e: Exception) {
+            logger.warn("Could not close the connection", e)
+        }
     }
 
     fun isClosed(): Boolean = socket.isClosed
@@ -194,7 +207,6 @@ class Connection(
     private inner class ActivityTrackingInputStream(val inputStream: InputStream): InputStream() {
 
         override fun read(): Int = inputStream.read().also { checks = 0 }
-
         override fun read(b: ByteArray?): Int = inputStream.read(b).also { checks = 0 }
         override fun read(b: ByteArray?, off: Int, len: Int): Int = inputStream.read(b, off, len).also { checks = 0 }
         override fun skip(n: Long): Long = inputStream.skip(n)
@@ -208,7 +220,6 @@ class Connection(
     private inner class ActivityTrackingOutputStream(val outputStream: OutputStream): OutputStream() {
 
         override fun write(b: Int) = outputStream.write(b).also { checks = 0 }
-
         override fun write(b: ByteArray?) = outputStream.write(b).also { checks = 0 }
         override fun write(b: ByteArray?, off: Int, len: Int) = outputStream.write(b, off, len).also { checks = 0 }
         override fun flush() = outputStream.flush()
