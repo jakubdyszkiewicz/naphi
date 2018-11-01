@@ -6,7 +6,9 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.time.Duration
 import java.util.concurrent.*
 import java.util.concurrent.atomic.LongAdder
@@ -24,13 +26,23 @@ private class Connections {
     }
 
     private fun connections(destination: ConnectionDestination) =
-            (connections.computeIfAbsent(destination) { LinkedBlockingDeque() })
+            connections.computeIfAbsent(destination) { LinkedBlockingDeque() }
 
     fun removeConnection(connection: Connection) {
-        connections[connection.destination]?.removeIf { it == connection }
+        connections[connection.destination]?.remove(connection)
     }
 
-    fun leaseConnection(destination: ConnectionDestination): Connection? = connections(destination).poll()
+    fun leaseConnection(destination: ConnectionDestination): Connection? {
+        // There can be already closed connection, but we want to return an active one
+        do {
+            val connection = connections(destination).poll()
+            if (connection == null) {
+                return null
+            } else if (!connection.isClosed()) {
+                return connection
+            }
+        } while(true)
+    }
 
     fun closeStaleConnections() {
         this.connections.forEach { _, connections ->
@@ -49,7 +61,7 @@ class ClientConnectionPoolException(msg: String): RuntimeException(msg)
 
 data class ConnectionClientPoolStats(val connectionsEstablished: Long)
 
-class ClientConnectionPool(
+internal class ClientConnectionPool(
         private val keepAliveTimeout: Duration,
         private val checkKeepAliveInterval: Duration,
         private val maxConnectionsPerDestination: Int,
@@ -67,9 +79,6 @@ class ClientConnectionPool(
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
             IncrementingThreadFactory("connection-pool-checker"))
     private val retrievingSemaphores = ConcurrentHashMap<ConnectionDestination, Semaphore>()
-
-    private val createConnectionThreadPool = Executors.newFixedThreadPool(100) // TODO param size of this thread pool and name it
-
     private val connectionsEstablished = LongAdder()
 
     fun start() {
@@ -106,12 +115,11 @@ class ClientConnectionPool(
 
     private fun createConnection(destination: ConnectionDestination): Connection {
         val socket = try {
-            createConnectionThreadPool.submit(Callable  {
-                Socket(destination.host, destination.port).also {
-                    it.soTimeout = socketTimeout.toMillis().toInt()
-                }
-            }).get(connectionTimeout.toMillis(), TimeUnit.MILLISECONDS)
-        } catch (e: TimeoutException) {
+            Socket().also {
+                it.soTimeout = socketTimeout.toMillis().toInt()
+                it.connect(InetSocketAddress(destination.host, destination.port), connectionTimeout.toMillis().toInt())
+            }
+        } catch (e: SocketTimeoutException) {
             throw ConnectionTimeoutException(destination)
         } catch (e: Exception) {
             throw ConnectionException("Could not connect to $destination", e)
@@ -126,12 +134,11 @@ class ClientConnectionPool(
     private fun leaseConnection(destination: ConnectionDestination): Connection? {
         logger.trace("Leasing a connection to $destination")
         val connection = availableConnections.leaseConnection(destination)
-        when (connection) {
-            null -> logger.trace("There was no connection to lease")
-            else -> {
-                leasedConnections.addConnection(connection)
-                logger.debug("Connection to $destination leased")
-            }
+        if (connection != null) {
+            leasedConnections.addConnection(connection)
+            logger.debug("Connection to $destination leased")
+        } else {
+            logger.trace("There was no connection to lease")
         }
         return connection
     }
@@ -163,7 +170,7 @@ data class ConnectionDestination(val host: String, val port: Int) {
     override fun toString(): String = "$host:$port"
 }
 
-class Connection(
+internal class Connection(
         private val socket: Socket,
         val destination: ConnectionDestination,
         keepAliveTimeout: Duration,
