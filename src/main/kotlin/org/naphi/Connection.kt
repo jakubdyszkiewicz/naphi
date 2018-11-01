@@ -14,8 +14,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
 
 class ConnectionPool(
-        val keepAliveTimeout: Duration,
-        val checkKeepAliveInterval: Duration
+        private val keepAliveTimeout: Duration,
+        private val checkKeepAliveInterval: Duration
 ): Closeable {
 
     private val logger = LoggerFactory.getLogger(ConnectionPool::class.java)

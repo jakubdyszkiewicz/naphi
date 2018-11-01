@@ -50,15 +50,17 @@ class ClientConnectionPoolException(msg: String): RuntimeException(msg)
 data class ConnectionClientPoolStats(val connectionsEstablished: Long)
 
 class ClientConnectionPool(
-        val keepAliveTimeout: Duration,
-        val checkKeepAliveInterval: Duration,
-        val maxConnectionsPerDestination: Int,
-        val connectionTimeout: Duration,
-        val socketTimeout: Duration,
-        val connectionRequestTimeout: Duration
+        private val keepAliveTimeout: Duration,
+        private val checkKeepAliveInterval: Duration,
+        private val maxConnectionsPerDestination: Int,
+        private val connectionTimeout: Duration,
+        private val socketTimeout: Duration,
+        private val connectionRequestTimeout: Duration
 ): Closeable {
 
-    private val logger = LoggerFactory.getLogger(ClientConnectionPool::class.java)
+    companion object {
+        private val logger = LoggerFactory.getLogger(ClientConnectionPool::class.java)
+    }
 
     private val availableConnections = Connections()
     private val leasedConnections = Connections()
@@ -164,8 +166,8 @@ data class ConnectionDestination(val host: String, val port: Int) {
 class Connection(
         private val socket: Socket,
         val destination: ConnectionDestination,
-        private val keepAliveTimeout: Duration,
-        private val checkKeepAliveInterval: Duration
+        keepAliveTimeout: Duration,
+        checkKeepAliveInterval: Duration
 ) {
 
     companion object {

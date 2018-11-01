@@ -6,6 +6,7 @@ import org.junit.After
 import org.junit.Test
 import org.naphi.client.ConnectionTimeoutException
 import org.naphi.client.SocketClient
+import org.naphi.client.SocketClientException
 import java.net.SocketTimeoutException
 import java.time.Duration
 import java.util.concurrent.Executors
@@ -172,7 +173,8 @@ class SocketClientTest {
                         path = "/",
                         method = RequestMethod.POST,
                         headers = HttpHeaders("content-length" to "0"))) }
-                .isInstanceOf(SocketTimeoutException::class.java)
+                .isInstanceOf(SocketClientException::class.java)
+                .hasCauseInstanceOf(SocketTimeoutException::class.java)
     }
 
 }
