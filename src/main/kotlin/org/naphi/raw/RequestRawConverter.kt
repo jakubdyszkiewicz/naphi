@@ -1,8 +1,8 @@
 package org.naphi.raw
 
-import org.naphi.PROTOCOL
-import org.naphi.Request
-import org.naphi.RequestMethod
+import org.naphi.contract.PROTOCOL
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
 import java.io.BufferedReader
 
 private val requestLineRegex = "^(.+) (.+) (.+)$".toRegex()

@@ -6,6 +6,8 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 import org.naphi.client.SocketClient
+import org.naphi.server.Server
+import org.naphi.contract.*
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.*
@@ -24,7 +26,7 @@ class SocketClientMultithreadingTest {
     fun setupServers() {
         repeat(nServers) {
             val server = Server(port = 8090 + it, handler = {
-//                Thread.sleep(100)
+                //                Thread.sleep(100)
                 Response(status = Status.OK, headers = HttpHeaders("Content-Length" to "0"))
             })
             servers += server

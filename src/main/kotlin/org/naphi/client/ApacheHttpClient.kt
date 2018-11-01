@@ -9,10 +9,10 @@ import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClientBuilder
 import org.apache.http.impl.client.StandardHttpRequestRetryHandler
 import org.apache.http.util.EntityUtils
-import org.naphi.HttpHeaders
-import org.naphi.Request
-import org.naphi.Response
-import org.naphi.Status
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import java.net.URI
 
 class ApacheHttpClient(

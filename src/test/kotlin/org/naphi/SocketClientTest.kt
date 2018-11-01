@@ -7,6 +7,8 @@ import org.junit.Test
 import org.naphi.client.ConnectionTimeoutException
 import org.naphi.client.SocketClient
 import org.naphi.client.SocketClientException
+import org.naphi.server.Server
+import org.naphi.contract.*
 import java.net.SocketTimeoutException
 import java.time.Duration
 import java.util.concurrent.Executors

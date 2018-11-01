@@ -4,6 +4,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Test
 import org.naphi.client.ApacheHttpClient
+import org.naphi.contract.*
+import org.naphi.server.Server
 import java.time.Duration
 
 class PersistentConnectionsTest {

@@ -1,6 +1,6 @@
 package org.naphi.raw
 
-import org.naphi.HttpHeaders
+import org.naphi.contract.HttpHeaders
 import java.io.BufferedReader
 
 private val headerRegex = "^(.+): (.+)$".toRegex()

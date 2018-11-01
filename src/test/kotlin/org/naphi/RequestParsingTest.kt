@@ -5,6 +5,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
 import org.naphi.raw.RequestParseException
 import org.naphi.raw.fromRaw
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
 import java.io.StringReader
 
 class RequestParsingTest {

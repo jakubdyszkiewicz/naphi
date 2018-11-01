@@ -1,8 +1,8 @@
 package org.naphi.raw
 
-import org.naphi.PROTOCOL
-import org.naphi.Response
-import org.naphi.Status
+import org.naphi.contract.PROTOCOL
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import java.io.BufferedReader
 
 private val responseLineRegex = "^(.+) (.+) (.+)$".toRegex()

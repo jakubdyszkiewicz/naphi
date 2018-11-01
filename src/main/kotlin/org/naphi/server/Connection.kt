@@ -1,4 +1,4 @@
-package org.naphi
+package org.naphi.server
 
 import org.naphi.commons.IncrementingThreadFactory
 import org.slf4j.LoggerFactory

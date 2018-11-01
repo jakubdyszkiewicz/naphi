@@ -3,9 +3,14 @@ package org.naphi
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Test
-import org.naphi.RequestMethod.GET
-import org.naphi.RequestMethod.POST
+import org.naphi.contract.RequestMethod.GET
+import org.naphi.contract.RequestMethod.POST
 import org.naphi.client.ApacheHttpClient
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.Response
+import org.naphi.contract.Status
+import org.naphi.server.*
 import java.net.Socket
 
 class ServerTest {

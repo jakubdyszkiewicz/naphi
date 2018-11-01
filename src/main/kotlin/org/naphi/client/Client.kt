@@ -1,7 +1,7 @@
 package org.naphi.client
 
-import org.naphi.Request
-import org.naphi.Response
+import org.naphi.contract.Request
+import org.naphi.contract.Response
 
 interface Client: AutoCloseable {
     fun exchange(url: String, request: Request): Response

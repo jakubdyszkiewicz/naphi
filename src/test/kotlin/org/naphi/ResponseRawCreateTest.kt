@@ -3,6 +3,9 @@ package org.naphi
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import org.naphi.raw.toRaw
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 
 class ResponseRawCreateTest {
 

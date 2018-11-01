@@ -1,7 +1,7 @@
 package org.naphi.client
 
-import org.naphi.Request
-import org.naphi.Response
+import org.naphi.contract.Request
+import org.naphi.contract.Response
 import org.naphi.raw.fromRaw
 import org.naphi.raw.toRaw
 import org.slf4j.LoggerFactory
