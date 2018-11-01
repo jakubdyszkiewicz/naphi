@@ -19,33 +19,45 @@ private class Connections {
         private val logger = LoggerFactory.getLogger(Connections::class.java)
     }
 
-    private val connections = ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>()
+    private val leased = ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>()
+    private val available = ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>()
 
-    fun addConnection(connection: Connection) {
-        connections(connection.destination) += connection
+    fun addLeased(connection: Connection) {
+        leased(connection.destination) += connection
     }
 
-    private fun connections(destination: ConnectionDestination) =
-            connections.computeIfAbsent(destination) { LinkedBlockingDeque() }
-
-    fun removeConnection(connection: Connection) {
-        connections[connection.destination]?.remove(connection)
-    }
-
-    fun leaseConnection(destination: ConnectionDestination): Connection? {
+    fun lease(destination: ConnectionDestination): Connection? {
         // There can be already closed connection, but we want to return an active one
         do {
-            val connection = connections(destination).poll()
+            val connection = available(destination).poll()
             if (connection == null) {
                 return null
             } else if (!connection.isClosed()) {
+                addLeased(connection)
                 return connection
             }
         } while(true)
     }
 
-    fun closeStaleConnections() {
-        this.connections.forEach { _, connections ->
+    fun release(connection: Connection) {
+        leased(connection.destination).remove(connection)
+        available(connection.destination) += connection
+    }
+
+    fun closeStale() {
+        closeStale(leased)
+        closeStale(available)
+    }
+
+    private fun leased(destination: ConnectionDestination) =
+            leased.computeIfAbsent(destination) { LinkedBlockingDeque() }
+
+    private fun available(destination: ConnectionDestination) =
+            available.computeIfAbsent(destination) { LinkedBlockingDeque() }
+
+    private fun closeStale(
+            connectionsForDestination: ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>) {
+        connectionsForDestination.forEach { _, connections ->
             val staleConnections = connections.filter(Connection::isInactive)
             connections.removeAll(staleConnections)
             staleConnections.forEach {
@@ -74,8 +86,7 @@ internal class ClientConnectionPool(
         private val logger = LoggerFactory.getLogger(ClientConnectionPool::class.java)
     }
 
-    private val availableConnections = Connections()
-    private val leasedConnections = Connections()
+    private val connections = Connections()
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
             IncrementingThreadFactory("connection-pool-checker"))
     private val retrievingSemaphores = ConcurrentHashMap<ConnectionDestination, Semaphore>()
@@ -108,8 +119,7 @@ internal class ClientConnectionPool(
 
     fun releaseConnection(connection: Connection) {
         logger.debug("Releasing connection to ${connection.destination}")
-        leasedConnections.removeConnection(connection)
-        availableConnections.addConnection(connection)
+        connections.release(connection)
         semaphore(connection.destination).release()
     }
 
@@ -126,19 +136,17 @@ internal class ClientConnectionPool(
         }
         val connection = Connection(socket, destination, keepAliveTimeout, checkKeepAliveInterval)
         logger.debug("Created connection to $destination")
-        leasedConnections.addConnection(connection)
+        connections.addLeased(connection)
         connectionsEstablished.increment()
         return connection
     }
 
     private fun leaseConnection(destination: ConnectionDestination): Connection? {
         logger.trace("Leasing a connection to $destination")
-        val connection = availableConnections.leaseConnection(destination)
-        if (connection != null) {
-            leasedConnections.addConnection(connection)
-            logger.debug("Connection to $destination leased")
-        } else {
-            logger.trace("There was no connection to lease")
+        val connection = connections.lease(destination)
+        when (connection) {
+            null -> logger.trace("There was no connection to lease")
+            else -> logger.debug("Connection to $destination leased")
         }
         return connection
     }
@@ -147,16 +155,11 @@ internal class ClientConnectionPool(
     private fun scheduleClosingStaleConnections() {
         checkerThreadPool.scheduleAtFixedRate({
             try {
-                closeStaleConnections()
+                connections.closeStale()
             } catch (e: Exception) {
                 logger.error("Error while closing stale connections", e)
             }
         }, checkKeepAliveInterval.toMillis(), checkKeepAliveInterval.toMillis(), TimeUnit.MILLISECONDS)
-    }
-
-    private fun closeStaleConnections() {
-        availableConnections.closeStaleConnections()
-        leasedConnections.closeStaleConnections()
     }
 
     override fun close() {
