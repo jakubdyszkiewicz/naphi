@@ -73,6 +73,7 @@ class SocketClientTest {
 
         // then
         assertThat(server.connectionsEstablished()).isEqualTo(1)
+        assertThat(client.stats().poolStats.connectionsEstablished).isEqualTo(1)
     }
 
     @Test
@@ -148,7 +149,12 @@ class SocketClientTest {
     @Test
     fun `should throw exception when connection timed out`() {
         // given
-        val nonRoutableIp = "10.0.0.0"
+        /**
+         * https://en.wikipedia.org/wiki/Reserved_IP_addresses
+         * requests to this IP should be dropped by router. This IP is reserved for documentation
+         * and should not be used in practice.
+         */
+        val nonRoutableIp = "192.0.2.0"
 
         // when & then
         assertThatThrownBy { client.exchange(
