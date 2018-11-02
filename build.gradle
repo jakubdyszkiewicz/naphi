@@ -17,6 +17,7 @@ group 'org.naphi'
 version '0.1-SNAPSHOT'
 
 apply plugin: 'kotlin'
+apply plugin: 'maven-publish'
 
 sourceCompatibility = 1.8
 
@@ -47,5 +48,13 @@ jar {
 
     from {
         configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
     }
 }
