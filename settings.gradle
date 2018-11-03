@@ -1,2 +1,3 @@
 rootProject.name = 'naphi'
+include 'naphi-demo'
 

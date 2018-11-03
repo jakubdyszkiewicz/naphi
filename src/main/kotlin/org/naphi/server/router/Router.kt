@@ -7,9 +7,10 @@ import org.naphi.server.Handler
 import org.naphi.server.error.NotFoundException
 import org.naphi.server.filter.Filter
 import org.naphi.server.filter.thenHandler
-import java.net.URI
 
 data class Routes(val routes: Collection<Route>) {
+
+    constructor(vararg routes: Route): this(routes.toList())
 
     init {
         validateClashes()
