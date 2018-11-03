@@ -6,8 +6,13 @@ data class Request(
         val path: String,
         val method: RequestMethod,
         val headers: HttpHeaders = HttpHeaders(),
-        val body: String? = null) {
+        val body: String? = null,
+        val pathParams: Map<String, String> = emptyMap()) {
     companion object
+
+    fun pathParam(key: String): String? = pathParams[key]
+
+    fun withPathParams(values: Map<String, String>) = this.copy(pathParams = values)
 }
 
 data class Response(
@@ -35,6 +40,7 @@ enum class RequestMethod {
 enum class Status(val code: Int, val reason: String) {
     OK(200, "OK"),
     BAD_REQUEST(400, "Bad Request"),
+    NOT_FOUND(404, "Not Found"),
     INTERNAL_SERVER_ERROR(500, "Internal Server Error");
     // todo more status codes
 

@@ -1,14 +1,19 @@
 package org.naphi.server
 
 import org.naphi.commons.IncrementingThreadFactory
-import org.naphi.contract.HttpHeaders
-import org.naphi.contract.Request
-import org.naphi.contract.Response
-import org.naphi.contract.Status
+import org.naphi.contract.*
 import org.naphi.raw.EmptyRequestException
 import org.naphi.raw.RequestParseException
 import org.naphi.raw.fromRaw
 import org.naphi.raw.toRaw
+import org.naphi.server.error.ErrorsHandler
+import org.naphi.server.filter.LoggingFilter
+import org.naphi.server.filter.TimingFilter
+import org.naphi.server.filter.then
+import org.naphi.server.filter.thenHandler
+import org.naphi.server.router.Route
+import org.naphi.server.router.Routes
+import org.naphi.server.router.RoutingHandler
 import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.net.ServerSocket
@@ -23,6 +28,7 @@ typealias Handler = (Request) -> Response
 
 class Server(
         val handler: Handler,
+        val errorsHandler: ErrorsHandler = object: ErrorsHandler {},
         val port: Int,
         val maxIncomingConnections: Int = 10,
         val maxWorkerThreads: Int = 50,
@@ -85,9 +91,8 @@ class Server(
                 logger.trace("Connection was closed by client")
                 connection.close()
                 break
-            } catch (e: RequestParseException) {
-                logger.warn("Could not parse a request", e)
-                Response(status = Status.BAD_REQUEST)
+            } catch (e: Exception) {
+                errorsHandler.handle(e)
             }
             output.print(response.toRaw())
             output.flush()
@@ -111,7 +116,12 @@ class Server(
 }
 
 fun main(args: Array<String>) {
-    Server(port = 8090, handler = {
-        Response(status = Status.OK, body = "Hello, World!", headers = HttpHeaders("Connection" to "Keep-Alive", "Content-Length" to "Hello, World!".length.toString()))
-    })
+    Server(port = 8090, handler = LoggingFilter.then(TimingFilter).thenHandler(RoutingHandler(Routes(listOf(
+            Route(path = "/hello", method = RequestMethod.GET) {
+                Response(status = Status.OK, body = "world", headers = HttpHeaders("content-length" to "world".length.toString()))
+            },
+            Route(path = "/world", method = RequestMethod.GET) {
+                Response(status = Status.OK, body = "hello", headers = HttpHeaders("content-length" to "hello".length.toString()))
+            }
+    )))))
 }
