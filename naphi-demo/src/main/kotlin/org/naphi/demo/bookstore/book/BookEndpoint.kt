@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.naphi.contract.*
 import org.naphi.contract.RequestMethod.GET
 import org.naphi.contract.RequestMethod.POST
+import org.naphi.contract.Status.*
 import org.naphi.server.router.Route
 import org.naphi.server.router.Routes
 
@@ -17,11 +18,10 @@ class BookEndpoint(
             Route("/{id}", GET, ::find)
     )
 
-    // todo application json content type
     private fun listAll(request: Request): Response {
         val books = repository.findAll()
         val serialized = objectMapper.writeValueAsString(books)
-        return Response(status = Status.OK, body = serialized, headers = HttpHeaders("content-length" to serialized.length.toString()))
+        return Response(OK).body(serialized, MediaTypes.APPLICATION_JSON)
     }
 
     private fun find(request: Request): Response {
@@ -29,16 +29,16 @@ class BookEndpoint(
         return repository.find(id)
                 ?.let {
                     val serialized = objectMapper.writeValueAsString(it)
-                    Response(status = Status.OK, body = serialized, headers = HttpHeaders("content-length" to serialized.length.toString()))
+                    return Response(OK).body(serialized, MediaTypes.APPLICATION_JSON)
                 }
-                ?: Response(status = Status.NOT_FOUND, headers = HttpHeaders("content-length" to "0"))
+                ?: Response(NOT_FOUND)
     }
 
 
     private fun save(request: Request): Response {
         val book = objectMapper.readValue(request.body, Book::class.java)
         repository.save(book)
-        return Response(Status.OK, headers = HttpHeaders("content-length" to "0"))
+        return Response(OK)
     }
 
 }

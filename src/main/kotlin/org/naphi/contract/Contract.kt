@@ -15,11 +15,19 @@ data class Request(
     fun withPathParams(values: Map<String, String>) = this.copy(pathParams = values)
 }
 
+
 data class Response(
         val status: Status,
-        val headers: HttpHeaders = HttpHeaders(),
+        val headers: HttpHeaders = HttpHeaders("content-length" to "0"),
         val body: String? = null) {
     companion object
+
+    fun body(body: String, mediaType: MediaType): Response {
+        return this.copy(body = body, headers = headers
+                .contentType(mediaType.value)
+                .contentLength(body.length))
+    }
+
 }
 
 enum class RequestMethod {
@@ -68,4 +76,17 @@ class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
     operator fun get(key: String): Collection<String> = mapOfHeaders[key] ?: emptyList()
     operator fun plus(pair: Pair<String, String>) = HttpHeaders(mapOfHeaders + (pair.first to listOf(pair.second)))
     override fun toString(): String = "HttpHeaders($mapOfHeaders)"
+
+    fun contentType(type: String): HttpHeaders = this + ("content-type" to type)
+    fun contentLength(length: Int): HttpHeaders = this + ("content-length" to length.toString())
+}
+
+data class MediaType(val value: String)
+
+object MediaTypes {
+    val APPLICATION_JSON = MediaType("application/json")
+    private val all = listOf(APPLICATION_JSON)
+
+    fun from(mediaType: String) = all.firstOrNull { it.value == mediaType } ?: MediaType(mediaType)
+
 }
