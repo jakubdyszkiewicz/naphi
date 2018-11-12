@@ -29,7 +29,7 @@ class ResponseRawCreateTest {
 
     @Test
     fun `should create response without body and headers`() {
-        val response = Response(status = Status.OK)
+        val response = Response(status = Status.OK, headers = HttpHeaders())
 
         // expect
         assertThat(response.toRaw()).isEqualTo("""

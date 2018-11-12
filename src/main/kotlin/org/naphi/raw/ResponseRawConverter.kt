@@ -31,7 +31,7 @@ fun Response.Companion.fromRaw(input: BufferedReader): Response {
 
 fun parseResponseLine(input: BufferedReader): ResponseLine {
     val responseLine = input.readLine() ?: throw EmptyResponseException()
-    val (protocol, statusCode, statusReason) = responseLineRegex.find(responseLine)?.destructured
+    val (protocol, statusCode, _) = responseLineRegex.find(responseLine)?.destructured
             ?: throw ResponseParseException("Invalid response line. It should match ${responseLineRegex.pattern} pattern")
     if (protocol != PROTOCOL) {
         throw RequestParseException("Invalid protocol $protocol. Only $PROTOCOL is supported")

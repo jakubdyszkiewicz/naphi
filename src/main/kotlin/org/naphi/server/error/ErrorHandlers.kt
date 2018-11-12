@@ -18,6 +18,7 @@ class ErrorHandler<T : Exception>(
 class ErrorHandlers(private val handlers: List<ErrorHandler<out Exception>>) {
     constructor(vararg handlers: ErrorHandler<out Exception>): this(handlers.toList())
 
+    @Suppress("UNCHECKED_CAST")
     fun findHandler(ex: Exception): ErrorHandler<Exception>? =
             handlers.firstOrNull { it.supports(ex) } as ErrorHandler<Exception>?
 }
