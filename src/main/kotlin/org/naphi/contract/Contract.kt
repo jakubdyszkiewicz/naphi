@@ -52,6 +52,9 @@ enum class Status(val code: Int, val reason: String) {
     INTERNAL_SERVER_ERROR(500, "Internal Server Error");
     // todo more status codes
 
+    fun isServerError() = code % 100 == 5
+    fun isClientError() = code % 100 == 4
+
     companion object {
         fun valueOfCode(code: Int) = values().first { it.code == code }
         fun findOfCode(code: Int) = values().firstOrNull { it.code == code }
@@ -84,6 +87,7 @@ class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
 data class MediaType(val value: String)
 
 object MediaTypes {
+    val TEXT_PLAIN = MediaType("text/plain")
     val APPLICATION_JSON = MediaType("application/json")
     private val all = listOf(APPLICATION_JSON)
 

@@ -1,10 +1,13 @@
 package org.naphi.demo.bookstore.book
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.naphi.contract.*
+import org.naphi.contract.MediaTypes
+import org.naphi.contract.Request
 import org.naphi.contract.RequestMethod.GET
 import org.naphi.contract.RequestMethod.POST
-import org.naphi.contract.Status.*
+import org.naphi.contract.Response
+import org.naphi.contract.Status.NOT_FOUND
+import org.naphi.contract.Status.OK
 import org.naphi.server.router.Route
 import org.naphi.server.router.Routes
 
