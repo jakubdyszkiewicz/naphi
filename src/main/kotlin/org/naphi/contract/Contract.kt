@@ -3,17 +3,19 @@ package org.naphi.contract
 const val PROTOCOL = "HTTP/1.1"
 
 data class Request(
-        val path: String,
-        val method: RequestMethod,
-        val headers: HttpHeaders = HttpHeaders(),
-        val body: String? = null) {
+    val path: String,
+    val method: RequestMethod,
+    val headers: HttpHeaders = HttpHeaders(),
+    val body: String? = null
+) {
     companion object
 }
 
 data class Response(
-        val status: Status,
-        val headers: HttpHeaders = HttpHeaders(),
-        val body: String? = null) {
+    val status: Status,
+    val headers: HttpHeaders = HttpHeaders(),
+    val body: String? = null
+) {
     companion object
 }
 
@@ -49,10 +51,10 @@ class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
     private val mapOfHeaders: Map<String, Collection<String>> = mapOfHeaders.mapKeys { (k, _) -> k.toLowerCase() }
 
     constructor(vararg pairs: Pair<String, String>)
-            : this(pairs.asSequence()
-            .groupBy { (name, _) -> name }
-            .mapValues { (_, namesWithValues) -> namesWithValues.map { (_, values) -> values } }
-            .toMap())
+        : this(pairs.asSequence()
+        .groupBy { (name, _) -> name }
+        .mapValues { (_, namesWithValues) -> namesWithValues.map { (_, values) -> values } }
+        .toMap())
 
     val contentLength: Int = this["content-length"].firstOrNull()?.toIntOrNull() ?: 0
     val connection: String? = this["connection"].firstOrNull()

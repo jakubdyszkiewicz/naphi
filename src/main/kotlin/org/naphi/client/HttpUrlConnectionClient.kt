@@ -8,8 +8,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class HttpUrlConnectionClient(
-        val connectionTimeout: Int,
-        val socketTimeout: Int
+    val connectionTimeout: Int,
+    val socketTimeout: Int
 ) : Client {
 
     override fun exchange(url: String, request: Request): Response {
@@ -25,9 +25,10 @@ class HttpUrlConnectionClient(
         sendBody(request, connection)
 
         val response = Response(
-                status = Status.valueOfCode(connection.responseCode),
-                headers = HttpHeaders(connection.headerFields.filterKeys { it != null }), // somehow there is entry with null
-                body = readResponseBody(connection))
+            status = Status.valueOfCode(connection.responseCode),
+            headers = HttpHeaders(connection.headerFields.filterKeys { it != null }), // somehow there is entry with null
+            body = readResponseBody(connection)
+        )
         connection.disconnect()
         return response
     }
@@ -38,12 +39,12 @@ class HttpUrlConnectionClient(
     }
 
     private fun readResponseBody(connection: HttpURLConnection) =
-            if (connection.contentLength > 0) connection.inputStream.bufferedReader().readText() else null
+        if (connection.contentLength > 0) connection.inputStream.bufferedReader().readText() else null
 
     private fun setRequestHeaders(request: Request, connection: HttpURLConnection) {
         request.headers.asSequence()
-                .flatMap { (name, values) -> values.asSequence().map { name to it } }
-                .forEach { (name, value) -> connection.addRequestProperty(name, value) }
+            .flatMap { (name, values) -> values.asSequence().map { name to it } }
+            .forEach { (name, value) -> connection.addRequestProperty(name, value) }
     }
 
     private fun sendBody(request: Request, connection: HttpURLConnection) {
@@ -54,5 +55,4 @@ class HttpUrlConnectionClient(
             }
         }
     }
-
 }

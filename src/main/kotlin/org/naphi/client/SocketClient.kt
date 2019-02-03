@@ -11,16 +11,18 @@ import java.net.URL
 import java.time.Duration
 
 class SocketClient(
-        val keepAliveTimeout: Duration = Duration.ofSeconds(30),
-        val checkKeepAliveInterval: Duration = Duration.ofSeconds(1),
-        val maxConnectionsToDestination: Int = 10,
-        val connectionTimeout: Duration = Duration.ofMillis(500),
-        val socketTimeout: Duration = Duration.ofMillis(200),
-        val connectionRequestTimeout: Duration = Duration.ofSeconds(1)
+    val keepAliveTimeout: Duration = Duration.ofSeconds(30),
+    val checkKeepAliveInterval: Duration = Duration.ofSeconds(1),
+    val maxConnectionsToDestination: Int = 10,
+    val connectionTimeout: Duration = Duration.ofMillis(500),
+    val socketTimeout: Duration = Duration.ofMillis(200),
+    val connectionRequestTimeout: Duration = Duration.ofSeconds(1)
 ) : Client {
 
-    private val connectionPool = ClientConnectionPool(keepAliveTimeout, checkKeepAliveInterval,
-            maxConnectionsToDestination, connectionTimeout, socketTimeout, connectionRequestTimeout)
+    private val connectionPool = ClientConnectionPool(
+        keepAliveTimeout, checkKeepAliveInterval,
+        maxConnectionsToDestination, connectionTimeout, socketTimeout, connectionRequestTimeout
+    )
 
     companion object {
         const val DEFAULT_HTTP_PORT = 80
@@ -32,13 +34,17 @@ class SocketClient(
     override fun exchange(url: String, request: Request): Response {
         val parsedUrl = URL(url)
         if (parsedUrl.protocol != SUPPORTED_PROTOCOL) {
-            throw SocketClientException("${parsedUrl.protocol} is not supported. " +
-                    "Only $SUPPORTED_PROTOCOL is supported")
+            throw SocketClientException(
+                "${parsedUrl.protocol} is not supported. Only $SUPPORTED_PROTOCOL is supported"
+            )
         }
 
-        val connection = connectionPool.retrieveConnection(ConnectionDestination(
+        val connection = connectionPool.retrieveConnection(
+            ConnectionDestination(
                 host = parsedUrl.host,
-                port = if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port))
+                port = if (parsedUrl.port == -1) DEFAULT_HTTP_PORT else parsedUrl.port
+            )
+        )
         try {
             return exchange(connection, request)
         } catch (e: Exception) {
@@ -67,5 +73,5 @@ class SocketClient(
     fun stats() = SocketClientStats(connectionPool.stats())
 }
 
-open class SocketClientException(msg: String, throwable: Throwable? = null): RuntimeException(msg, throwable)
+open class SocketClientException(msg: String, throwable: Throwable? = null) : RuntimeException(msg, throwable)
 data class SocketClientStats(val poolStats: ConnectionClientPoolStats)

@@ -17,24 +17,24 @@ import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-
-
 typealias Handler = (Request) -> Response
 
 class Server(
-        val handler: Handler,
-        val port: Int,
-        val maxIncomingConnections: Int = 10,
-        val maxWorkerThreads: Int = 50,
-        val keepAliveTimeout: Duration = Duration.ofSeconds(30),
-        val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)
-): AutoCloseable {
+    val handler: Handler,
+    val port: Int,
+    val maxIncomingConnections: Int = 10,
+    val maxWorkerThreads: Int = 50,
+    val keepAliveTimeout: Duration = Duration.ofSeconds(30),
+    val checkKeepAliveInterval: Duration = Duration.ofSeconds(1)
+) : AutoCloseable {
 
     private val logger = LoggerFactory.getLogger(Server::class.java)
 
     private val serverSocket = ServerSocket(port, maxIncomingConnections)
-    private val handlerThreadPool = Executors.newFixedThreadPool(maxWorkerThreads, IncrementingThreadFactory("server-handler"))
-    private val acceptingConnectionsThreadPool = Executors.newSingleThreadExecutor(IncrementingThreadFactory("server-connections-acceptor"))
+    private val handlerThreadPool =
+        Executors.newFixedThreadPool(maxWorkerThreads, IncrementingThreadFactory("server-handler"))
+    private val acceptingConnectionsThreadPool =
+        Executors.newSingleThreadExecutor(IncrementingThreadFactory("server-connections-acceptor"))
     private val connectionPool = ConnectionPool(keepAliveTimeout, checkKeepAliveInterval)
 
     init {
@@ -112,6 +112,10 @@ class Server(
 
 fun main(args: Array<String>) {
     Server(port = 8090, handler = {
-        Response(status = Status.OK, body = "Hello, World!", headers = HttpHeaders("Connection" to "Keep-Alive", "Content-Length" to "Hello, World!".length.toString()))
+        Response(
+            status = Status.OK,
+            body = "Hello, World!",
+            headers = HttpHeaders("Connection" to "Keep-Alive", "Content-Length" to "Hello, World!".length.toString())
+        )
     })
 }

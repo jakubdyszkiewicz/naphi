@@ -7,7 +7,7 @@ import java.io.BufferedReader
 
 private val requestLineRegex = "^(.+) (.+) (.+)$".toRegex()
 
-open class RequestParseException(msg: String): RuntimeException(msg)
+open class RequestParseException(msg: String) : RuntimeException(msg)
 class EmptyRequestException : RequestParseException("Request must not be empty")
 
 private data class RequestLine(val method: RequestMethod, val path: String, val protocol: String)
@@ -22,9 +22,9 @@ fun Request.Companion.fromRaw(input: BufferedReader): Request {
 private fun parseRequestLine(input: BufferedReader): RequestLine {
     val requestLine = input.readLine() ?: throw EmptyRequestException()
     val (methodRaw, path, protocol) = requestLineRegex.find(requestLine)?.destructured
-            ?: throw RequestParseException("Invalid request line. It should match ${requestLineRegex.pattern} pattern")
+        ?: throw RequestParseException("Invalid request line. It should match ${requestLineRegex.pattern} pattern")
     val method = RequestMethod.valueOfOrNull(methodRaw)
-            ?: throw RequestParseException("Method $methodRaw is not supported")
+        ?: throw RequestParseException("Method $methodRaw is not supported")
     if (protocol != PROTOCOL) {
         throw RequestParseException("Invalid protocol. Only $PROTOCOL is supported")
     }
@@ -38,7 +38,6 @@ fun Request.toRaw(): String {
     appendBody(this.body, buffer)
     return buffer.toString()
 }
-
 
 private fun Request.appendRequestLine(buffer: StringBuffer) {
     buffer.append("${method.name} $path $PROTOCOL\n")

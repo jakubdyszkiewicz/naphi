@@ -1,6 +1,5 @@
 package org.naphi.client
 
-
 import org.naphi.commons.IncrementingThreadFactory
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -36,7 +35,7 @@ private class Connections {
                 addLeased(connection)
                 return connection
             }
-        } while(true)
+        } while (true)
     }
 
     fun release(connection: Connection) {
@@ -50,13 +49,14 @@ private class Connections {
     }
 
     private fun leased(destination: ConnectionDestination) =
-            leased.computeIfAbsent(destination) { LinkedBlockingDeque() }
+        leased.computeIfAbsent(destination) { LinkedBlockingDeque() }
 
     private fun available(destination: ConnectionDestination) =
-            available.computeIfAbsent(destination) { LinkedBlockingDeque() }
+        available.computeIfAbsent(destination) { LinkedBlockingDeque() }
 
     private fun closeStale(
-            connectionsForDestination: ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>) {
+        connectionsForDestination: ConcurrentHashMap<ConnectionDestination, BlockingDeque<Connection>>
+    ) {
         connectionsForDestination.forEach { _, connections ->
             val staleConnections = connections.filter(Connection::isInactive)
             connections.removeAll(staleConnections)
@@ -66,21 +66,20 @@ private class Connections {
             }
         }
     }
-
 }
 
-class ClientConnectionPoolException(msg: String): RuntimeException(msg)
+class ClientConnectionPoolException(msg: String) : RuntimeException(msg)
 
 data class ConnectionClientPoolStats(val connectionsEstablished: Long)
 
 internal class ClientConnectionPool(
-        private val keepAliveTimeout: Duration,
-        private val checkKeepAliveInterval: Duration,
-        private val maxConnectionsPerDestination: Int,
-        private val connectionTimeout: Duration,
-        private val socketTimeout: Duration,
-        private val connectionRequestTimeout: Duration
-): Closeable {
+    private val keepAliveTimeout: Duration,
+    private val checkKeepAliveInterval: Duration,
+    private val maxConnectionsPerDestination: Int,
+    private val connectionTimeout: Duration,
+    private val socketTimeout: Duration,
+    private val connectionRequestTimeout: Duration
+) : Closeable {
 
     companion object {
         private val logger = LoggerFactory.getLogger(ClientConnectionPool::class.java)
@@ -88,7 +87,8 @@ internal class ClientConnectionPool(
 
     private val connections = Connections()
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
-            IncrementingThreadFactory("connection-pool-checker"))
+        IncrementingThreadFactory("connection-pool-checker")
+    )
     private val retrievingSemaphores = ConcurrentHashMap<ConnectionDestination, Semaphore>()
     private val connectionsEstablished = LongAdder()
 
@@ -108,12 +108,13 @@ internal class ClientConnectionPool(
         logger.trace("Waiting for acquire permit to retrieve connection to $destination")
         if (!semaphore(destination).tryAcquire(connectionRequestTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
             throw ClientConnectionPoolException(
-                    "Timeout on waiting to retrieve the connection. Limit of open connections exceeded.")
+                "Timeout on waiting to retrieve the connection. Limit of open connections exceeded."
+            )
         }
     }
 
     private fun semaphore(destination: ConnectionDestination) =
-            retrievingSemaphores.computeIfAbsent(destination) { Semaphore(maxConnectionsPerDestination) }
+        retrievingSemaphores.computeIfAbsent(destination) { Semaphore(maxConnectionsPerDestination) }
 
     fun stats(): ConnectionClientPoolStats = ConnectionClientPoolStats(connectionsEstablished.sum())
 
@@ -151,7 +152,6 @@ internal class ClientConnectionPool(
         return connection
     }
 
-
     private fun scheduleClosingStaleConnections() {
         checkerThreadPool.scheduleAtFixedRate({
             try {
@@ -166,7 +166,6 @@ internal class ClientConnectionPool(
         checkerThreadPool.shutdown()
         checkerThreadPool.awaitTermination(1, TimeUnit.SECONDS)
     }
-
 }
 
 internal data class ConnectionDestination(val host: String, val port: Int) {
@@ -175,10 +174,10 @@ internal data class ConnectionDestination(val host: String, val port: Int) {
 }
 
 internal class Connection(
-        private val socket: Socket,
-        val destination: ConnectionDestination,
-        keepAliveTimeout: Duration,
-        checkKeepAliveInterval: Duration
+    private val socket: Socket,
+    val destination: ConnectionDestination,
+    keepAliveTimeout: Duration,
+    checkKeepAliveInterval: Duration
 ) {
 
     companion object {
@@ -210,14 +209,14 @@ internal class Connection(
     fun isClosed(): Boolean = socket.isClosed
 
     fun getInputStream(): InputStream = socket.getInputStream()
-            ?.let(::ActivityTrackingInputStream)
-            ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
+        ?.let(::ActivityTrackingInputStream)
+        ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
 
     fun getOutputStream(): OutputStream = socket.getOutputStream()
-            ?.let(::ActivityTrackingOutputStream)
-            ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
+        ?.let(::ActivityTrackingOutputStream)
+        ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
 
-    private inner class ActivityTrackingInputStream(val inputStream: InputStream): InputStream() {
+    private inner class ActivityTrackingInputStream(val inputStream: InputStream) : InputStream() {
 
         override fun read(): Int = inputStream.read().also { checks = 0 }
         override fun read(b: ByteArray?): Int = inputStream.read(b).also { checks = 0 }
@@ -230,7 +229,7 @@ internal class Connection(
         override fun markSupported(): Boolean = inputStream.markSupported()
     }
 
-    private inner class ActivityTrackingOutputStream(val outputStream: OutputStream): OutputStream() {
+    private inner class ActivityTrackingOutputStream(val outputStream: OutputStream) : OutputStream() {
 
         override fun write(b: Int) = outputStream.write(b).also { checks = 0 }
         override fun write(b: ByteArray?) = outputStream.write(b).also { checks = 0 }
@@ -240,5 +239,7 @@ internal class Connection(
     }
 }
 
-class ConnectionTimeoutException internal constructor(destination: ConnectionDestination): ConnectionException("Connection to $destination timeout out")
-open class ConnectionException(msg: String, throwable: Throwable? = null): RuntimeException(msg, throwable)
+class ConnectionTimeoutException internal constructor(destination: ConnectionDestination) :
+    ConnectionException("Connection to $destination timeout out")
+
+open class ConnectionException(msg: String, throwable: Throwable? = null) : RuntimeException(msg, throwable)

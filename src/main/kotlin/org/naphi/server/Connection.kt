@@ -14,15 +14,16 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
 
 class ConnectionPool(
-        private val keepAliveTimeout: Duration,
-        private val checkKeepAliveInterval: Duration
-): Closeable {
+    private val keepAliveTimeout: Duration,
+    private val checkKeepAliveInterval: Duration
+) : Closeable {
 
     private val logger = LoggerFactory.getLogger(ConnectionPool::class.java)
 
     private val connections = ConcurrentLinkedQueue<Connection>()
     private val checkerThreadPool = Executors.newSingleThreadScheduledExecutor(
-            IncrementingThreadFactory("connection-pool-checker"))
+        IncrementingThreadFactory("connection-pool-checker")
+    )
 
     private val connectionsEstablished = LongAdder()
 
@@ -42,10 +43,10 @@ class ConnectionPool(
 
     private fun closeStaleConnections() {
         connections.filter(this::isConnectionInactive)
-                .forEach {
-                    logger.debug("Closing connection to ${it.destination()} due to not being active")
-                    it.close()
-                }
+            .forEach {
+                logger.debug("Closing connection to ${it.destination()} due to not being active")
+                it.close()
+            }
         connections.removeIf(Connection::isClosed)
     }
 
@@ -82,10 +83,10 @@ class Connection(private val socket: Socket) {
     fun destination(): InetAddress? = socket.inetAddress
 
     fun getInputStream(): InputStream = socket.getInputStream()
-            ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
+        ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
 
     fun getOutputStream(): OutputStream = socket.getOutputStream()
-            ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
+        ?: throw ConnectionException("Could not obtain stream. Is socket closed?")
 }
 
-class ConnectionException(msg: String): RuntimeException(msg)
+class ConnectionException(msg: String) : RuntimeException(msg)
