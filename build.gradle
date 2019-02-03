@@ -7,13 +7,12 @@ buildscript {
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-//        classpath "org.jlleitschuh.gradle:ktlint-gradle:6.2.1"
     }
 }
 
 plugins {
     id 'java'
-//    id("io.gitlab.arturbosch.detekt").version("1.0.0-RC11")
+    id("io.gitlab.arturbosch.detekt").version("1.0.0-RC11")
     id "org.jlleitschuh.gradle.ktlint" version "6.2.1"
     id "org.jlleitschuh.gradle.ktlint-idea" version "6.2.1"
 }
@@ -69,8 +68,9 @@ wrapper {
     gradleVersion = '4.10.1'
 }
 
-//detekt {
-//    toolVersion = "1.0.0-RC11"
-//    input = files("src/main/kotlin")
-//    filters = ".*/resources/.*,.*/build/.*"
-//}
+detekt {
+    toolVersion = "1.0.0-RC11"
+    input = files("src/main/kotlin")
+    filters = ".*/resources/.*,.*/build/.*"
+    config = files("config/default-detekt-config.yml", "config/detekt-config.yml")
+}

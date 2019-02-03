@@ -7,8 +7,12 @@ import org.junit.Test
 import org.naphi.client.ConnectionTimeoutException
 import org.naphi.client.SocketClient
 import org.naphi.client.SocketClientException
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import org.naphi.server.Server
-import org.naphi.contract.*
 import java.net.SocketTimeoutException
 import java.time.Duration
 import java.util.concurrent.Executors
@@ -17,7 +21,11 @@ import java.util.concurrent.atomic.LongAdder
 
 class SocketClientTest {
 
-    private val client = SocketClient(maxConnectionsToDestination = 2, socketTimeout = Duration.ofSeconds(2), connectionRequestTimeout = Duration.ofSeconds(2))
+    private val client = SocketClient(
+        maxConnectionsToDestination = 2,
+        socketTimeout = Duration.ofSeconds(2),
+        connectionRequestTimeout = Duration.ofSeconds(2)
+    )
     private lateinit var server: Server
 
     @After
@@ -34,19 +42,25 @@ class SocketClientTest {
         val body = "Echo!"
         server = Server(port = 8090, handler = { request ->
             Response(
-                    status = Status.OK,
-                    body = request.body,
-                    headers = HttpHeaders("x-custom-header" to request.headers["x-custom-header"].first(), "content-length" to body.length.toString()))
+                status = Status.OK,
+                body = request.body,
+                headers = HttpHeaders(
+                    "x-custom-header" to request.headers["x-custom-header"].first(),
+                    "content-length" to body.length.toString()
+                )
+            )
         })
 
         // when
         val response = client.exchange(
-                url = "http://localhost:8090",
-                request = Request(
-                        path = "/",
-                        method = RequestMethod.POST,
-                        headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
-                        body = body))
+            url = "http://localhost:8090",
+            request = Request(
+                path = "/",
+                method = RequestMethod.POST,
+                headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
+                body = body
+            )
+        )
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
@@ -64,11 +78,13 @@ class SocketClientTest {
         // when
         repeat(times = 3) {
             client.exchange(
-                    url = "http://localhost:8090",
-                    request = Request(
-                            path = "/",
-                            method = RequestMethod.POST,
-                            headers = HttpHeaders("content-length" to "0")))
+                url = "http://localhost:8090",
+                request = Request(
+                    path = "/",
+                    method = RequestMethod.POST,
+                    headers = HttpHeaders("content-length" to "0")
+                )
+            )
         }
 
         // then
@@ -90,11 +106,13 @@ class SocketClientTest {
         repeat(times = 3) {
             threadPool.submit {
                 val response = client.exchange(
-                        url = "http://localhost:8090",
-                        request = Request(
-                                path = "/",
-                                method = RequestMethod.POST,
-                                headers = HttpHeaders("content-length" to "0")))
+                    url = "http://localhost:8090",
+                    request = Request(
+                        path = "/",
+                        method = RequestMethod.POST,
+                        headers = HttpHeaders("content-length" to "0")
+                    )
+                )
                 if (response.status == Status.OK) {
                     successCalls.increment()
                 }
@@ -115,17 +133,20 @@ class SocketClientTest {
             Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
         })
         val client = SocketClient(
-                keepAliveTimeout = Duration.ofMillis(1000),
-                checkKeepAliveInterval = Duration.ofMillis(100),
-                socketTimeout = Duration.ofSeconds(2))
+            keepAliveTimeout = Duration.ofMillis(1000),
+            checkKeepAliveInterval = Duration.ofMillis(100),
+            socketTimeout = Duration.ofSeconds(2)
+        )
 
         // when
         var response = client.exchange(
-                url = "http://localhost:8090",
-                request = Request(
-                        path = "/",
-                        method = RequestMethod.POST,
-                        headers = HttpHeaders("content-length" to "0")))
+            url = "http://localhost:8090",
+            request = Request(
+                path = "/",
+                method = RequestMethod.POST,
+                headers = HttpHeaders("content-length" to "0")
+            )
+        )
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
@@ -135,11 +156,13 @@ class SocketClientTest {
 
         // when
         response = client.exchange(
-                url = "http://localhost:8090",
-                request = Request(
-                        path = "/",
-                        method = RequestMethod.POST,
-                        headers = HttpHeaders("content-length" to "0")))
+            url = "http://localhost:8090",
+            request = Request(
+                path = "/",
+                method = RequestMethod.POST,
+                headers = HttpHeaders("content-length" to "0")
+            )
+        )
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)
@@ -157,13 +180,17 @@ class SocketClientTest {
         val nonRoutableIp = "192.0.2.0"
 
         // when & then
-        assertThatThrownBy { client.exchange(
+        assertThatThrownBy {
+            client.exchange(
                 url = "http://$nonRoutableIp:80",
                 request = Request(
-                        path = "/",
-                        method = RequestMethod.POST,
-                        headers = HttpHeaders("content-length" to "0"))) }
-                .isInstanceOf(ConnectionTimeoutException::class.java)
+                    path = "/",
+                    method = RequestMethod.POST,
+                    headers = HttpHeaders("content-length" to "0")
+                )
+            )
+        }
+            .isInstanceOf(ConnectionTimeoutException::class.java)
     }
 
     @Test
@@ -175,14 +202,17 @@ class SocketClientTest {
         })
 
         // when & then
-        assertThatThrownBy { client.exchange(
+        assertThatThrownBy {
+            client.exchange(
                 url = "http://localhost:8090",
                 request = Request(
-                        path = "/",
-                        method = RequestMethod.POST,
-                        headers = HttpHeaders("content-length" to "0"))) }
-                .isInstanceOf(SocketClientException::class.java)
-                .hasCauseInstanceOf(SocketTimeoutException::class.java)
+                    path = "/",
+                    method = RequestMethod.POST,
+                    headers = HttpHeaders("content-length" to "0")
+                )
+            )
+        }
+            .isInstanceOf(SocketClientException::class.java)
+            .hasCauseInstanceOf(SocketTimeoutException::class.java)
     }
-
 }

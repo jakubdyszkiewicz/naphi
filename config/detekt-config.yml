@@ -1,0 +1,9 @@
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+  ThrowsCount:
+    active: false

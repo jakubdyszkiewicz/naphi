@@ -35,32 +35,33 @@ class RequestParsingTest {
     @Test
     fun `should throw error on empty request`() {
         assertThatThrownBy { parseRequest("") }
-                .isInstanceOf(RequestParseException::class.java)
-                .hasMessage("Request must not be empty")
+            .isInstanceOf(RequestParseException::class.java)
+            .hasMessage("Request must not be empty")
     }
 
     @Test
     fun `should throw error on invalid request line`() {
-        //given
+        // given
         val invalidRequestLines = listOf(
-                "XXXX",
-                "GET /",
-                "/ HTTP/1.1",
-                "GET HTTP/1.1")
+            "XXXX",
+            "GET /",
+            "/ HTTP/1.1",
+            "GET HTTP/1.1"
+        )
 
         // expect
         invalidRequestLines.forEach { input ->
             assertThatThrownBy { parseRequest(input) }
-                    .isInstanceOf(RequestParseException::class.java)
-                    .hasMessage("Invalid request line. It should match ^(.+) (.+) (.+)\$ pattern")
+                .isInstanceOf(RequestParseException::class.java)
+                .hasMessage("Invalid request line. It should match ^(.+) (.+) (.+)\$ pattern")
         }
     }
 
     @Test
     fun `should throw error on invalid method`() {
         assertThatThrownBy { parseRequest("UNKNOWN / HTTP/1.1") }
-                .isInstanceOf(RequestParseException::class.java)
-                .hasMessage("Method UNKNOWN is not supported")
+            .isInstanceOf(RequestParseException::class.java)
+            .hasMessage("Method UNKNOWN is not supported")
     }
 
     @Test
@@ -68,15 +69,16 @@ class RequestParsingTest {
         // given
         val requestLine = "GET / HTTP/1.1"
         val invalidHeaderLines = listOf(
-                "XXXX",
-                "X-Header: ",
-                ": X")
+            "XXXX",
+            "X-Header: ",
+            ": X"
+        )
 
         // expect
         invalidHeaderLines.forEach { input ->
             assertThatThrownBy { parseRequest("$requestLine\n$input") }
-                    .isInstanceOf(RequestParseException::class.java)
-                    .hasMessageStartingWith("Invalid header line: ")
+                .isInstanceOf(RequestParseException::class.java)
+                .hasMessageStartingWith("Invalid header line: ")
         }
     }
 

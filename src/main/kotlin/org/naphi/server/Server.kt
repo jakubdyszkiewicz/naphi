@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 
 typealias Handler = (Request) -> Response
 
+@SuppressWarnings("MagicNumber")
 class Server(
     val handler: Handler,
     val port: Int,

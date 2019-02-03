@@ -10,7 +10,7 @@ import org.naphi.contract.HttpHeaders
 import org.naphi.contract.Request
 import org.naphi.contract.Response
 import org.naphi.contract.Status
-import org.naphi.server.*
+import org.naphi.server.Server
 import java.net.Socket
 
 class ServerTest {
@@ -46,19 +46,25 @@ class ServerTest {
         val body = "Echo!"
         server = Server(port = 8090, handler = { request ->
             Response(
-                    status = Status.OK,
-                    body = request.body,
-                    headers = HttpHeaders("x-custom-header" to request.headers["x-custom-header"].first(), "content-length" to body.length.toString()))
+                status = Status.OK,
+                body = request.body,
+                headers = HttpHeaders(
+                    "x-custom-header" to request.headers["x-custom-header"].first(),
+                    "content-length" to body.length.toString()
+                )
+            )
         })
 
         // when
         val response = client.exchange(
-                url = "http://localhost:8090",
-                request = Request(
-                        path = "/",
-                        method = POST,
-                        headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
-                        body = body))
+            url = "http://localhost:8090",
+            request = Request(
+                path = "/",
+                method = POST,
+                headers = HttpHeaders("x-custom-header" to "ABC", "content-length" to body.length.toString()),
+                body = body
+            )
+        )
 
         // then
         assertThat(response.status).isEqualTo(Status.OK)

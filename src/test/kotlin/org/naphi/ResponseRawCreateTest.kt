@@ -13,18 +13,21 @@ class ResponseRawCreateTest {
     fun `should create raw response`() {
         // given
         val response = Response(
-                status = Status.OK,
-                headers = HttpHeaders("content-length" to "5", "content-type" to "text/plain"),
-                body = "Hello")
+            status = Status.OK,
+            headers = HttpHeaders("content-length" to "5", "content-type" to "text/plain"),
+            body = "Hello"
+        )
 
         // expect
-        assertThat(response.toRaw()).isEqualTo("""
+        assertThat(response.toRaw()).isEqualTo(
+            """
             HTTP/1.1 200 OK
             content-length: 5
             content-type: text/plain
 
             Hello
-        """.trimIndent())
+        """.trimIndent()
+        )
     }
 
     @Test
@@ -32,10 +35,12 @@ class ResponseRawCreateTest {
         val response = Response(status = Status.OK)
 
         // expect
-        assertThat(response.toRaw()).isEqualTo("""
+        assertThat(response.toRaw()).isEqualTo(
+            """
             HTTP/1.1 200 OK
 
 
-        """.trimIndent())
+        """.trimIndent()
+        )
     }
 }

@@ -34,6 +34,7 @@ enum class RequestMethod {
     }
 }
 
+@Suppress("MagicNumber")
 enum class Status(val code: Int, val reason: String) {
     OK(200, "OK"),
     BAD_REQUEST(400, "Bad Request"),

@@ -4,7 +4,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Test
 import org.naphi.client.ApacheHttpClient
-import org.naphi.contract.*
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import org.naphi.server.Server
 import java.time.Duration
 
@@ -39,12 +43,12 @@ class PersistentConnectionsTest {
     fun `should create new connection when old is closed by keep alive checker`() {
         // given
         server = Server(
-                port = 8090,
-                keepAliveTimeout = Duration.ofMillis(500),
-                checkKeepAliveInterval = Duration.ofMillis(100),
-                handler = {
-                    Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
-                })
+            port = 8090,
+            keepAliveTimeout = Duration.ofMillis(500),
+            checkKeepAliveInterval = Duration.ofMillis(100),
+            handler = {
+                Response(status = Status.OK, headers = HttpHeaders("content-length" to "0"))
+            })
 
         // when
         client.exchange(url = "http://localhost:8090", request = Request(path = "/", method = RequestMethod.GET))
@@ -70,11 +74,13 @@ class PersistentConnectionsTest {
         // when
         repeat(times = 3) {
             client.exchange(
-                    url = "http://localhost:8090",
-                    request = Request(
-                            path = "/",
-                            method = RequestMethod.GET,
-                            headers = HttpHeaders("connection" to "close")))
+                url = "http://localhost:8090",
+                request = Request(
+                    path = "/",
+                    method = RequestMethod.GET,
+                    headers = HttpHeaders("connection" to "close")
+                )
+            )
         }
 
         // then

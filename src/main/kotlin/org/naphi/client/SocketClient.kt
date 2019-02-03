@@ -10,6 +10,7 @@ import java.lang.RuntimeException
 import java.net.URL
 import java.time.Duration
 
+@SuppressWarnings("MagicNumber")
 class SocketClient(
     val keepAliveTimeout: Duration = Duration.ofSeconds(30),
     val checkKeepAliveInterval: Duration = Duration.ofSeconds(1),

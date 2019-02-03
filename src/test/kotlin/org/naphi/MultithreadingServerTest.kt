@@ -4,7 +4,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Test
 import org.naphi.client.HttpUrlConnectionClient
-import org.naphi.contract.*
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import org.naphi.server.Server
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -35,7 +39,10 @@ class MultithreadingServerTest {
         repeat(3) {
             clientPool.submit {
                 try {
-                    val response = client.exchange(url = "http://localhost:8090", request = Request(path = "/", method = RequestMethod.GET))
+                    val response = client.exchange(
+                        url = "http://localhost:8090",
+                        request = Request(path = "/", method = RequestMethod.GET)
+                    )
                     if (response.status == Status.OK) {
                         completedRequests.increment()
                     }

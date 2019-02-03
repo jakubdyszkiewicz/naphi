@@ -6,11 +6,17 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 import org.naphi.client.SocketClient
+import org.naphi.contract.HttpHeaders
+import org.naphi.contract.Request
+import org.naphi.contract.RequestMethod
+import org.naphi.contract.Response
+import org.naphi.contract.Status
 import org.naphi.server.Server
-import org.naphi.contract.*
 import java.time.Duration
-import java.util.*
-import java.util.concurrent.*
+import java.util.Random
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class SocketClientMultithreadingTest {
 
@@ -19,10 +25,12 @@ class SocketClientMultithreadingTest {
     val sampleRate = 10
     val nServers = 10
     val servers = mutableListOf<Server>()
-    val client = SocketClient(maxConnectionsToDestination = 5,
-            socketTimeout = Duration.ofSeconds(10),
-            connectionTimeout = Duration.ofSeconds(1),
-            connectionRequestTimeout = Duration.ofSeconds(10))
+    val client = SocketClient(
+        maxConnectionsToDestination = 5,
+        socketTimeout = Duration.ofSeconds(10),
+        connectionTimeout = Duration.ofSeconds(1),
+        connectionRequestTimeout = Duration.ofSeconds(10)
+    )
     val random = Random()
 
     @Before
@@ -38,7 +46,7 @@ class SocketClientMultithreadingTest {
     fun cleanup() {
         val cleaning = Executors.newFixedThreadPool(nServers)
         servers.map { cleaning.submit { it.close() } }
-                .map { it.get() }
+            .map { it.get() }
         cleaning.awaitTermination(0, TimeUnit.MILLISECONDS)
         client.close()
     }
@@ -55,11 +63,13 @@ class SocketClientMultithreadingTest {
                 val chosenServer = random.nextInt(nServers)
                 val response = try {
                     client.exchange(
-                            url = "http://localhost:${8090 + chosenServer}",
-                            request = Request(
-                                    path = "/",
-                                    method = RequestMethod.POST,
-                                    headers = HttpHeaders("content-length" to "0")))
+                        url = "http://localhost:${8090 + chosenServer}",
+                        request = Request(
+                            path = "/",
+                            method = RequestMethod.POST,
+                            headers = HttpHeaders("content-length" to "0")
+                        )
+                    )
                 } catch (e: Exception) {
                     e.printStackTrace()
                     throw e
@@ -74,6 +84,6 @@ class SocketClientMultithreadingTest {
         assertThat(errors).isEmpty()
         assertThat(requestsDone.count).isEqualTo(0)
         assertThat(client.stats().poolStats.connectionsEstablished.toInt())
-                .isLessThanOrEqualTo(nServers * client.maxConnectionsToDestination)
+            .isLessThanOrEqualTo(nServers * client.maxConnectionsToDestination)
     }
 }
