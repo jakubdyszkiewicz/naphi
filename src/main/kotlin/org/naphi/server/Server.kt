@@ -22,8 +22,6 @@ import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-
-
 typealias Handler = (Request) -> Response
 
 class Server(

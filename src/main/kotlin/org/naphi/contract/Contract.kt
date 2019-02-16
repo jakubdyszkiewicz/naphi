@@ -13,6 +13,12 @@ data class Request(
     fun pathParam(key: String): String? = pathParams[key]
 
     fun withPathParams(values: Map<String, String>) = this.copy(pathParams = values)
+
+    fun body(body: String, mediaType: MediaType): Request {
+        return this.copy(body = body, headers = headers
+            .contentType(mediaType.value)
+            .contentLength(body.length))
+    }
 }
 
 
@@ -47,6 +53,8 @@ enum class RequestMethod {
 
 enum class Status(val code: Int, val reason: String) {
     OK(200, "OK"),
+    CREATED(201, "Created"),
+    NO_CONTENT(204, "No Content"),
     BAD_REQUEST(400, "Bad Request"),
     NOT_FOUND(404, "Not Found"),
     INTERNAL_SERVER_ERROR(500, "Internal Server Error");

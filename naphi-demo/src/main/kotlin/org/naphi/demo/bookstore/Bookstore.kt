@@ -20,7 +20,10 @@ class Bookstore(
     private val bookEndpoint = BookEndpoint(bookRepository, objectMapper)
     private val server = Server(
             port = 8090,
-            handler = LoggingFilter.thenHandler(RoutingHandler(bookEndpoint.routes)))
+            handler = LoggingFilter.thenHandler(
+                RoutingHandler(bookEndpoint.routes.withBasePath("/books"))
+            )
+    )
 
     override fun close() = server.close()
 }

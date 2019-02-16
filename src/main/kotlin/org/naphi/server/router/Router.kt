@@ -28,6 +28,8 @@ data class Routes(val routes: Collection<Route>) {
         }
     }
 
+    fun withBasePath(base: String) = Routes(routes.map { route -> route.copy(path = base + route.path) })
+
     fun withFilter(filter: Filter) = Routes(routes.map { it.withFilter(filter) })
 
     companion object {
