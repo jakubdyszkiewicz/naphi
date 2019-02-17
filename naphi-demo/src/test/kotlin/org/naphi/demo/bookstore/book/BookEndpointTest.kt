@@ -9,9 +9,9 @@ import org.junit.Test
 import org.naphi.client.ApacheHttpClient
 import org.naphi.client.ClientRequestBuilder
 import org.naphi.client.HttpClient
-import org.naphi.client.Serializer
 import org.naphi.client.get
 import org.naphi.client.post
+import org.naphi.client.serializer.Serializer
 import org.naphi.contract.Status
 import org.naphi.demo.bookstore.Bookstore
 
@@ -42,7 +42,7 @@ class BookEndpointTest {
         val bookRepository = InMemoryBookRepository()
         val bookstore = Bookstore(bookRepository = bookRepository)
 
-        val httpClient = HttpClient(
+        val client = HttpClient(
             client = ApacheHttpClient(connectionTimeout = 1000, socketTimeout = 1000),
             serializers = listOf(JacksonSerializer(ObjectMapper().registerModule(KotlinModule()))),
             defaultRequest = {
@@ -57,7 +57,7 @@ class BookEndpointTest {
 
         @AfterClass()
         fun cleanUp() {
-            httpClient.close()
+            client.close()
             bookstore.close()
         }
     }
@@ -68,7 +68,7 @@ class BookEndpointTest {
         val book = bookRepository.create(NewBook(title = "Harry Potter and the Sorcerer's Stone"))
 
         // when
-        val response = httpClient.get<List<Map<String, *>>> {
+        val response = client.get<List<Map<String, *>>> {
             path("/books")
         }
 
@@ -87,7 +87,7 @@ class BookEndpointTest {
         val newBook = NewBook(title = "The Hobbit")
 
         // when
-        val createResponse = httpClient.post<Book> {
+        val createResponse = client.post<Book> {
             url("http://localhost:8090/books")
             json(newBook)
         }
@@ -97,7 +97,7 @@ class BookEndpointTest {
         val book: Book = createResponse.body!!
 
         // when
-        val findResponse = httpClient.get<Map<String, String>> {
+        val findResponse = client.get<Map<String, String>> {
             path("/books/${book.id}")
         }
 

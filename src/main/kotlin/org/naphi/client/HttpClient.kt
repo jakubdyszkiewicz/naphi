@@ -1,5 +1,7 @@
 package org.naphi.client
 
+import org.naphi.client.serializer.Serializer
+import org.naphi.client.serializer.StringSerializer
 import org.naphi.contract.HttpHeaders
 import org.naphi.contract.Request
 import org.naphi.contract.RequestMethod
@@ -9,32 +11,12 @@ import java.lang.RuntimeException
 import java.net.URI
 import kotlin.IllegalStateException
 
-interface Serializer {
-    fun supports(body: Any?, contentType: String?): Boolean
-
-    fun serialize(body: Any?): String?
-    fun contentType(): String
-
-    fun <T> deserialize(body: String?, clazz: Class<T>): T?
-}
-
-object StringSerializer : Serializer {
-
-    override fun supports(body: Any?, contentType: String?): Boolean =
-        if (body != null) body::class.java.isAssignableFrom(String::class.java) else true
-
-    override fun serialize(body: Any?): String? = body?.toString()
-    override fun contentType(): String = "text/plain"
-
-    override fun <T> deserialize(body: String?, clazz: Class<T>): T? = body as T?
-}
-
 class ClientRequestBuilder {
-
     internal var url: String? = null
     internal var method: RequestMethod? = null
     internal var body: Any? = null
     internal var headers: HttpHeaders = HttpHeaders()
+
     fun url(url: String) {
         this.url = url
     }
@@ -64,6 +46,7 @@ class HttpClient(
     private val serializers: List<Serializer> = listOf(StringSerializer),
     private val defaultRequest: ClientRequestBuilder.() -> Unit = {}
 ) : AutoCloseable {
+
     fun <T> exchange(clazz: Class<T>, builderFn: ClientRequestBuilder.() -> Unit): TypedResponse<T> {
         val builder = ClientRequestBuilder()
         builder.defaultRequest()
@@ -118,7 +101,7 @@ class HttpClient(
 
 data class TypedResponse<T>(
     val status: Status,
-    val headers: HttpHeaders = HttpHeaders("content-length" to "0"),
+    val headers: HttpHeaders = HttpHeaders(),
     val body: T? = null
 )
 
