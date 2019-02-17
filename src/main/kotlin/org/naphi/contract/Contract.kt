@@ -81,6 +81,7 @@ class HttpHeaders(mapOfHeaders: Map<String, Collection<String>> = emptyMap()) {
 
     val contentLength: Int = this["content-length"].firstOrNull()?.toIntOrNull() ?: 0
     val connection: String? = this["connection"].firstOrNull()
+    val contentType: String? = this["content-type"].firstOrNull()
     val size: Int = mapOfHeaders.size
 
     fun asSequence() = mapOfHeaders.asSequence()
