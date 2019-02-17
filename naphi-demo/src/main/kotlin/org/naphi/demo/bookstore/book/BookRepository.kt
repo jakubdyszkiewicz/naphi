@@ -34,4 +34,8 @@ class InMemoryBookRepository: BookRepository {
     }
 
     override fun delete(id: String): Boolean = books.remove(id) != null
+
+    fun deleteAll() {
+        books.clear()
+    }
 }
